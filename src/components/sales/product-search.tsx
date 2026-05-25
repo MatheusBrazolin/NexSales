@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, type KeyboardEvent } from 'react'
 import { toast } from 'sonner'
-import { Search, Plus, ScanBarcode } from 'lucide-react'
+import { Search, Plus, Minus, ScanBarcode } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -19,6 +19,8 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
   const [results, setResults] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
   const [scanning, setScanning] = useState(false)
+  /** Quantity chosen per product before clicking "Adicionar". */
+  const [quantities, setQuantities] = useState<Record<string, number>>({})
   const inputRef = useRef<HTMLInputElement>(null)
   const debouncedQuery = useDebounce(query, 300)
 
@@ -48,16 +50,30 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
       })
   }, [debouncedQuery])
 
-  function handleAdd(product: Product) {
-    onAdd({ product, quantity: 1 })
+  function getQuantity(product: Product): number {
+    return quantities[product.id] ?? 1
+  }
+
+  function setQuantity(product: Product, value: number) {
+    const clamped = Math.max(1, Math.min(product.stock_quantity, Math.floor(value) || 1))
+    setQuantities((prev) => ({ ...prev, [product.id]: clamped }))
+  }
+
+  function handleAdd(product: Product, quantity: number) {
+    if (quantity > product.stock_quantity) {
+      toast.error(`Estoque insuficiente. Disponível: ${product.stock_quantity}`)
+      return
+    }
+    onAdd({ product, quantity })
     setQuery('')
     setResults([])
+    setQuantities({})
     // Return focus to the input so the next scan/search keeps flowing
     inputRef.current?.focus()
   }
 
   // Scanner workflow: USB readers type the code + Enter.
-  // On Enter, we try an EXACT code match and auto-add to the cart.
+  // On Enter, we try an EXACT code match and auto-add ONE unit to the cart.
   async function handleScanLookup(code: string) {
     const trimmed = code.trim()
     if (!trimmed) return
@@ -79,7 +95,6 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
 
     if (!data) {
       toast.error(`Produto não encontrado: ${trimmed}`)
-      // Keep the value so the user can correct it
       inputRef.current?.select()
       return
     }
@@ -90,13 +105,12 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
       return
     }
 
-    handleAdd(data)
+    handleAdd(data, 1)
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       e.preventDefault()
-      // Read directly from the input — avoids any state lag from fast scanners
       void handleScanLookup(e.currentTarget.value)
     }
   }
@@ -120,8 +134,12 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
       </div>
 
       <p className="text-[11px] text-slate-400 px-1">
-        Pressione <kbd className="px-1 py-0.5 border border-slate-200 rounded text-[10px] bg-slate-50">Enter</kbd> para
-        adicionar pelo código exato (scanner) ou clique em um resultado da lista.
+        Pressione{' '}
+        <kbd className="px-1 py-0.5 border border-slate-200 rounded text-[10px] bg-slate-50">
+          Enter
+        </kbd>{' '}
+        para adicionar pelo código exato (scanner = 1 unidade) ou ajuste a quantidade abaixo
+        antes de clicar em <strong>Adicionar</strong>.
       </p>
 
       {(loading || scanning) && (
@@ -132,29 +150,67 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
 
       {results.length > 0 && (
         <div className="border rounded-lg divide-y bg-white shadow-sm">
-          {results.map((product) => (
-            <div
-              key={product.id}
-              className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition-colors"
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{product.name}</p>
-                <p className="text-xs text-slate-500">
-                  Cód: {product.code} · Estoque: {product.stock_quantity} ·{' '}
-                  {formatCurrency(product.sale_price)}
-                </p>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="ml-3 shrink-0"
-                onClick={() => handleAdd(product)}
+          {results.map((product) => {
+            const qty = getQuantity(product)
+            return (
+              <div
+                key={product.id}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors"
               >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                Adicionar
-              </Button>
-            </div>
-          ))}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{product.name}</p>
+                  <p className="text-xs text-slate-500">
+                    Cód: {product.code} · Estoque: {product.stock_quantity} ·{' '}
+                    {formatCurrency(product.sale_price)}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="inline-flex items-center rounded-md border border-slate-200 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(product, qty - 1)}
+                      disabled={qty <= 1}
+                      className="h-8 w-8 inline-flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      aria-label="Diminuir quantidade"
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={product.stock_quantity}
+                      value={qty}
+                      onChange={(e) =>
+                        setQuantity(product, parseInt(e.target.value, 10) || 1)
+                      }
+                      onFocus={(e) => e.currentTarget.select()}
+                      className="w-12 h-8 text-center text-sm font-medium tabular-nums bg-white border-x border-slate-200 focus:outline-none focus:bg-blue-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      aria-label="Quantidade"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(product, qty + 1)}
+                      disabled={qty >= product.stock_quantity}
+                      className="h-8 w-8 inline-flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      aria-label="Aumentar quantidade"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white shadow-sm"
+                    onClick={() => handleAdd(product, qty)}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Adicionar
+                  </Button>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 

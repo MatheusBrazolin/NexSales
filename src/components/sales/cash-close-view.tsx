@@ -24,7 +24,7 @@ import {
 import { formatCurrency, PAYMENT_LABELS } from '@/lib/utils/format'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import type { CashCloseSummary } from '@/lib/queries/cash-close'
+import type { CashCloseSummary, SaleItemSummary } from '@/lib/queries/cash-close'
 import type { PaymentMethod } from '@/types/database'
 
 type PaymentStyle = { badge: string; dot: string; bar: string }
@@ -234,16 +234,16 @@ export function CashCloseView({ summary }: CashCloseViewProps) {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-slate-100">
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 h-11 pl-6">
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 h-11 pl-6 w-20">
                     Hora
                   </TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 w-36">
                     Pagamento
                   </TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    Observações
+                    Itens
                   </TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-right pr-6">
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-right pr-6 w-32">
                     Total
                   </TableHead>
                 </TableRow>
@@ -259,11 +259,11 @@ export function CashCloseView({ summary }: CashCloseViewProps) {
                   summary.sales.map((sale) => {
                     const style = PAYMENT_STYLES[sale.payment_method]
                     return (
-                      <TableRow key={sale.id} className="border-slate-100">
-                        <TableCell className="pl-6 text-sm text-slate-600 tabular-nums">
+                      <TableRow key={sale.id} className="border-slate-100 align-top">
+                        <TableCell className="pl-6 pt-3 text-sm text-slate-600 tabular-nums">
                           {format(new Date(sale.created_at), 'HH:mm')}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="pt-3">
                           <span
                             className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${style.badge}`}
                           >
@@ -271,10 +271,10 @@ export function CashCloseView({ summary }: CashCloseViewProps) {
                             {PAYMENT_LABELS[sale.payment_method]}
                           </span>
                         </TableCell>
-                        <TableCell className="text-sm text-slate-500 truncate max-w-xs">
-                          {sale.notes || <span className="text-slate-300">—</span>}
+                        <TableCell className="py-3">
+                          <ItemsList items={sale.items} notes={sale.notes} />
                         </TableCell>
-                        <TableCell className="text-right pr-6 font-semibold text-slate-900 tabular-nums">
+                        <TableCell className="text-right pr-6 pt-3 font-semibold text-slate-900 tabular-nums">
                           {formatCurrency(sale.total_amount)}
                         </TableCell>
                       </TableRow>
@@ -331,5 +331,46 @@ function KpiCard({
         <p className="mt-2 text-2xl font-bold text-slate-900 tabular-nums">{value}</p>
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * Compact view of a sale's items, used inside the cash-close table.
+ * Renders one line per item: "qty × name — subtotal". Notes (if any) appear
+ * as a subtle italic line below.
+ */
+function ItemsList({
+  items,
+  notes,
+}: {
+  items: SaleItemSummary[]
+  notes: string | null
+}) {
+  if (items.length === 0) {
+    return <span className="text-sm text-slate-400">—</span>
+  }
+
+  return (
+    <div className="space-y-1">
+      {items.map((item, idx) => (
+        <div
+          key={`${item.productCode}-${idx}`}
+          className="flex items-start gap-2 text-sm leading-snug"
+        >
+          <span className="inline-flex items-center justify-center min-w-7 h-5 px-1.5 rounded bg-slate-100 text-slate-700 text-xs font-semibold tabular-nums">
+            {item.quantity}×
+          </span>
+          <span className="flex-1 text-slate-800 break-words">{item.productName}</span>
+          <span className="text-slate-500 tabular-nums text-xs whitespace-nowrap">
+            {formatCurrency(item.subtotal)}
+          </span>
+        </div>
+      ))}
+      {notes && (
+        <p className="pt-1 text-xs italic text-slate-500 border-t border-slate-100 mt-1.5">
+          Obs: {notes}
+        </p>
+      )}
+    </div>
   )
 }

@@ -7,6 +7,23 @@ export interface PaymentBreakdown {
   total: number
 }
 
+export interface SaleItemSummary {
+  productCode: string
+  productName: string
+  quantity: number
+  unitPrice: number
+  subtotal: number
+}
+
+export interface SaleRow {
+  id: string
+  created_at: string
+  total_amount: number
+  payment_method: PaymentMethod
+  notes: string | null
+  items: SaleItemSummary[]
+}
+
 export interface CashCloseSummary {
   /** ISO date YYYY-MM-DD that was queried */
   date: string
@@ -18,19 +35,34 @@ export interface CashCloseSummary {
   averageTicket: number
   /** Per-method aggregation, sorted by total desc */
   byPayment: PaymentBreakdown[]
-  /** Raw sales list for table rendering */
-  sales: Array<{
-    id: string
-    created_at: string
-    total_amount: number
-    payment_method: PaymentMethod
-    notes: string | null
-  }>
+  /** Raw sales list, each with its items */
+  sales: SaleRow[]
+}
+
+interface RawProduct {
+  name: string
+  code: string
+}
+
+interface RawSaleItem {
+  quantity: number
+  unit_price: number
+  subtotal: number
+  products: RawProduct | null
+}
+
+interface RawSale {
+  id: string
+  created_at: string
+  total_amount: number
+  payment_method: string
+  notes: string | null
+  sale_items: RawSaleItem[] | null
 }
 
 /**
- * Aggregate all sales for a single local-day window (00:00 → 23:59:59.999).
- * `localDate` should be an ISO date string in the YYYY-MM-DD form, in the user's timezone.
+ * Aggregate all sales for a single local-day window (00:00 → 23:59:59.999),
+ * including each sale's line items (product, quantity, prices).
  */
 export async function getCashClose(localDate: string): Promise<CashCloseSummary> {
   const start = new Date(`${localDate}T00:00:00`)
@@ -39,19 +71,30 @@ export async function getCashClose(localDate: string): Promise<CashCloseSummary>
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('sales')
-    .select('id, created_at, total_amount, payment_method, notes')
+    .select(
+      'id, created_at, total_amount, payment_method, notes, sale_items(quantity, unit_price, subtotal, products(code, name))',
+    )
     .gte('created_at', start.toISOString())
     .lte('created_at', end.toISOString())
     .order('created_at', { ascending: true })
 
   if (error) throw new Error(error.message)
 
-  const sales = (data ?? []).map((row) => ({
+  const rows = (data ?? []) as unknown as RawSale[]
+
+  const sales: SaleRow[] = rows.map((row) => ({
     id: row.id,
     created_at: row.created_at,
     total_amount: Number(row.total_amount),
     payment_method: row.payment_method as PaymentMethod,
     notes: row.notes,
+    items: (row.sale_items ?? []).map((item) => ({
+      productCode: item.products?.code ?? '—',
+      productName: item.products?.name ?? '(produto removido)',
+      quantity: item.quantity,
+      unitPrice: Number(item.unit_price),
+      subtotal: Number(item.subtotal),
+    })),
   }))
 
   const byPaymentMap = new Map<PaymentMethod, PaymentBreakdown>()
