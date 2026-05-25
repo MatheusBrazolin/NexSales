@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-heading: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -121,14 +121,93 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  html {
+    @apply font-sans;
+    /* Inter's stylistic alternates: ss03 = better punctuation, cv11 = single-story "a",
+       calt = contextual alternates, ss01 = friendlier glyphs */
+    font-feature-settings: "cv11", "ss01", "ss03", "calt";
+    /* Make text just a touch tighter and crisper at base size */
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    letter-spacing: -0.005em;
   }
-  html {
-    @apply font-sans;
+
+  /* Headings: tighter tracking + slightly heavier weight for hierarchy */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold text-slate-900;
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+  }
+
+  h1 { @apply text-2xl; letter-spacing: -0.028em; }
+  h2 { @apply text-xl; letter-spacing: -0.024em; }
+  h3 { @apply text-lg; }
+  h4 { @apply text-base; }
+
+  /* Numeric contexts always use tabular figures so columns align cleanly */
+  .tabular-nums,
+  table td,
+  table th,
+  input[type="number"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum", "cv11", "ss01", "ss03";
+  }
+
+  /* Product codes, IDs and other monospace contexts */
+  code,
+  kbd,
+  samp,
+  pre,
+  .font-mono {
+    font-feature-settings: normal;
+  }
+
+  /* Crisp form fields: same font as body, never the browser default */
+  input,
+  textarea,
+  select,
+  button {
+    font-family: inherit;
+  }
+
+  /* Better look for native date inputs in Chrome/Edge */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0.55;
+    cursor: pointer;
+    transition: opacity 150ms ease;
+  }
+  input[type="date"]:hover::-webkit-calendar-picker-indicator {
+    opacity: 1;
+  }
+
+  /* Keyboard hint chips */
+  kbd {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    font-weight: 500;
+  }
+
+  /* Prevent layout shift on text balanced headings/paragraphs */
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Selection color — softer than default */
+  ::selection {
+    background-color: rgb(191 219 254);
+    color: rgb(15 23 42);
   }
 }
 
