@@ -1,7 +1,6 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { getCashClose, todayLocalISO } from '@/lib/queries/cash-close'
 import { CashCloseView } from '@/components/sales/cash-close-view'
+import { requireAdmin } from '@/lib/auth/roles'
 
 export const metadata = {
   title: 'Fechamento de caixa',
@@ -12,11 +11,7 @@ export default async function FechamentoPage({
 }: {
   searchParams: Promise<{ date?: string }>
 }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  await requireAdmin()
 
   const { date } = await searchParams
   const localDate = isValidDate(date) ? date : todayLocalISO()

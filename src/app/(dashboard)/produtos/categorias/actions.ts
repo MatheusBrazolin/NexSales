@@ -3,8 +3,13 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { categorySchema } from '@/lib/validations/category.schema'
+import { isAdmin } from '@/lib/auth/roles'
 
 export async function createCategory(name: string) {
+  if (!(await isAdmin())) {
+    return { error: 'Apenas administradores podem gerenciar categorias.' }
+  }
+
   const parsed = categorySchema.safeParse({ name })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
@@ -22,6 +27,10 @@ export async function createCategory(name: string) {
 }
 
 export async function deleteCategory(id: string) {
+  if (!(await isAdmin())) {
+    return { error: 'Apenas administradores podem gerenciar categorias.' }
+  }
+
   const supabase = await createClient()
   const { error } = await supabase.from('categories').delete().eq('id', id)
   if (error) return { error: error.message }

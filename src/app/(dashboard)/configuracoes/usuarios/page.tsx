@@ -1,0 +1,207 @@
+import { ShieldCheck, User as UserIcon, Users } from 'lucide-react'
+import { Card } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { createClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth/roles'
+import { displayName, initials } from '@/lib/utils/user-display'
+import { UserRoleSelect } from './user-role-select'
+
+export const metadata = {
+  title: 'Usuários',
+}
+
+interface AdminUserRow {
+  user_id: string
+  email: string
+  first_name: string | null
+  last_name: string | null
+  role: 'admin' | 'employee'
+  created_at: string
+  last_sign_in_at: string | null
+}
+
+function formatDate(value: string | null): string {
+  if (!value) return '—'
+  return new Date(value).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+export default async function UsuariosPage() {
+  const current = await requireAdmin()
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('admin_list_users')
+
+  const users: AdminUserRow[] = (data ?? []) as AdminUserRow[]
+  const adminCount = users.filter((u) => u.role === 'admin').length
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+          Usuários
+        </h1>
+        <p className="text-sm text-slate-500 mt-1">
+          Gerencie quem tem acesso de administrador ao sistema.
+        </p>
+      </div>
+
+      {/* Quick stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="border-slate-200/80 p-4 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+            <Users className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">
+              Total
+            </p>
+            <p className="text-xl font-semibold text-slate-900 tabular-nums">
+              {users.length}
+            </p>
+          </div>
+        </Card>
+        <Card className="border-slate-200/80 p-4 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">
+              Administradores
+            </p>
+            <p className="text-xl font-semibold text-slate-900 tabular-nums">
+              {adminCount}
+            </p>
+          </div>
+        </Card>
+        <Card className="border-slate-200/80 p-4 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+            <UserIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">
+              Funcionários
+            </p>
+            <p className="text-xl font-semibold text-slate-900 tabular-nums">
+              {users.length - adminCount}
+            </p>
+          </div>
+        </Card>
+      </div>
+
+      <Card className="border-slate-200/80 shadow-sm overflow-hidden">
+        {error ? (
+          <div className="p-6 text-sm text-red-700 bg-red-50 border-b border-red-100">
+            Erro ao carregar usuários: {error.message}
+          </div>
+        ) : null}
+
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent border-slate-100">
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 h-11">
+                  Usuário
+                </TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Cadastrado em
+                </TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Último acesso
+                </TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-right">
+                  Papel
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={4} className="text-center py-12 text-slate-400">
+                    Nenhum usuário cadastrado.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                users.map((u, idx) => {
+                  const isSelf = u.user_id === current.id
+                  const name = displayName({
+                    firstName: u.first_name,
+                    lastName: u.last_name,
+                    email: u.email,
+                  })
+                  const ini = initials({
+                    firstName: u.first_name,
+                    lastName: u.last_name,
+                    email: u.email,
+                  })
+                  return (
+                    <TableRow
+                      key={u.user_id}
+                      className={`border-slate-100 hover:bg-slate-50/70 transition-colors ${
+                        idx % 2 === 1 ? 'bg-slate-50/30' : ''
+                      }`}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="h-9 w-9 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xs font-semibold shadow-sm"
+                            aria-hidden
+                          >
+                            {ini}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-slate-900 truncate">
+                                {name}
+                              </span>
+                              {isSelf ? (
+                                <span className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-inset ring-blue-600/15">
+                                  você
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="text-xs text-slate-500 truncate">{u.email}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-500 tabular-nums">
+                        {formatDate(u.created_at)}
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-500 tabular-nums">
+                        {formatDate(u.last_sign_in_at)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <UserRoleSelect
+                          userId={u.user_id}
+                          role={u.role}
+                          isSelf={isSelf}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
+          Novos usuários cadastrados entram como <strong>Funcionário</strong> por
+          padrão. Promova a <strong>Administrador</strong> quando necessário.
+        </div>
+      </Card>
+    </div>
+  )
+}

@@ -1,23 +1,23 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ProductForm } from '@/components/products/product-form'
 import { updateProduct } from '../actions'
+import { requireAdmin } from '@/lib/auth/roles'
 
 export default async function EditarProdutoPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  await requireAdmin()
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: { user } }, { data: product }, { data: categories }] = await Promise.all([
-    supabase.auth.getUser(),
+  const [{ data: product }, { data: categories }] = await Promise.all([
     supabase.from('products').select('*').eq('id', id).single(),
     supabase.from('categories').select('*').order('name'),
   ])
 
-  if (!user) redirect('/login')
   if (!product) notFound()
 
   const action = updateProduct.bind(null, id)

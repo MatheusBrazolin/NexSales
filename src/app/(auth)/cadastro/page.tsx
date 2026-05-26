@@ -24,7 +24,12 @@ export default function CadastroPage() {
 
   async function onSubmit(data: SignUpFormData) {
     setServerError(null)
-    const result = await signUp(data.email, data.password)
+    const result = await signUp(
+      data.email,
+      data.password,
+      data.firstName,
+      data.lastName,
+    )
     if (result?.error) setServerError(result.error)
   }
 
@@ -48,6 +53,50 @@ export default function CadastroPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="firstName" className="text-slate-700 text-sm font-medium">
+              Nome
+            </Label>
+            <Input
+              id="firstName"
+              type="text"
+              placeholder="João"
+              autoComplete="given-name"
+              autoCapitalize="words"
+              className="h-11 border-slate-200 focus-visible:ring-2 focus-visible:ring-blue-600/20 focus-visible:border-blue-600"
+              {...register('firstName')}
+            />
+            {errors.firstName && (
+              <p className="text-red-600 text-xs flex items-center gap-1.5">
+                <AlertCircle className="h-3 w-3" />
+                {errors.firstName.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="lastName" className="text-slate-700 text-sm font-medium">
+              Sobrenome
+            </Label>
+            <Input
+              id="lastName"
+              type="text"
+              placeholder="Silva"
+              autoComplete="family-name"
+              autoCapitalize="words"
+              className="h-11 border-slate-200 focus-visible:ring-2 focus-visible:ring-blue-600/20 focus-visible:border-blue-600"
+              {...register('lastName')}
+            />
+            {errors.lastName && (
+              <p className="text-red-600 text-xs flex items-center gap-1.5">
+                <AlertCircle className="h-3 w-3" />
+                {errors.lastName.message}
+              </p>
+            )}
+          </div>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="email" className="text-slate-700 text-sm font-medium">
             Email

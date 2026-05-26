@@ -6,8 +6,11 @@ import { TopProducts } from '@/components/dashboard/top-products'
 import { RecentSales } from '@/components/dashboard/recent-sales'
 import { getDashboardMetrics, getSalesLast30Days } from '@/lib/queries/dashboard'
 import { Skeleton } from '@/components/ui/skeleton'
+import { requireAdmin } from '@/lib/auth/roles'
 
 export default async function DashboardPage() {
+  await requireAdmin()
+
   const [metrics, chartData] = await Promise.all([
     getDashboardMetrics(),
     getSalesLast30Days(),

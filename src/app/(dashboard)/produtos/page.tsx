@@ -15,6 +15,7 @@ import { Pagination } from '@/components/ui/pagination'
 import { ProductActions } from '@/components/products/product-actions'
 import { getCategories, getProductsPaged, type StockFilter } from '@/lib/queries/products'
 import { formatCurrency } from '@/lib/utils/format'
+import { requireAdmin } from '@/lib/auth/roles'
 
 type StockStatus = 'out' | 'low' | 'ok'
 
@@ -77,6 +78,7 @@ export default async function ProdutosPage({
 }: {
   searchParams: Promise<ProdutosSearchParams>
 }) {
+  await requireAdmin()
   const sp = await searchParams
   const search = sp.q?.trim() || undefined
   const categoryId = sp.category || undefined

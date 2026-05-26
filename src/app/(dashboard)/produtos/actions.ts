@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { productSchema } from '@/lib/validations/product.schema'
 import { lookupExternalBarcode, type BarcodeSource } from '@/lib/barcode/lookup'
+import { isAdmin } from '@/lib/auth/roles'
 
 export type BarcodeLookupResult =
   | {
@@ -114,6 +115,10 @@ export async function lookupProductByBarcode(
 }
 
 export async function createProduct(formData: FormData) {
+  if (!(await isAdmin())) {
+    return { error: 'Apenas administradores podem cadastrar produtos.' }
+  }
+
   const raw = Object.fromEntries(formData)
   const parsed = productSchema.safeParse(raw)
 
@@ -138,6 +143,10 @@ export async function createProduct(formData: FormData) {
 }
 
 export async function updateProduct(id: string, formData: FormData) {
+  if (!(await isAdmin())) {
+    return { error: 'Apenas administradores podem editar produtos.' }
+  }
+
   const raw = Object.fromEntries(formData)
   const parsed = productSchema.safeParse(raw)
 
@@ -165,6 +174,10 @@ export async function updateProduct(id: string, formData: FormData) {
 }
 
 export async function deleteProduct(id: string) {
+  if (!(await isAdmin())) {
+    return { error: 'Apenas administradores podem excluir produtos.' }
+  }
+
   const supabase = await createClient()
   const { error } = await supabase
     .from('products')

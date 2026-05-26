@@ -8,14 +8,18 @@ import {
   ShoppingCart,
   Tags,
   ShoppingBag,
+  Users,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { UserRole } from '@/types/database'
 
 interface NavItem {
   href: string
   label: string
   icon: LucideIcon
+  /** When true, only visible to admins. */
+  adminOnly?: boolean
 }
 
 interface NavSection {
@@ -27,16 +31,22 @@ const navSections: NavSection[] = [
   {
     title: 'Menu',
     items: [
-      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/produtos', label: 'Produtos', icon: Package },
-      { href: '/produtos/categorias', label: 'Categorias', icon: Tags },
+      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
+      { href: '/produtos', label: 'Produtos', icon: Package, adminOnly: true },
+      { href: '/produtos/categorias', label: 'Categorias', icon: Tags, adminOnly: true },
     ],
   },
   {
     title: 'Vendas',
     items: [
-      { href: '/vendas', label: 'Histórico', icon: ShoppingCart },
       { href: '/vendas/nova', label: 'Nova Venda', icon: ShoppingBag },
+      { href: '/vendas', label: 'Histórico', icon: ShoppingCart },
+    ],
+  },
+  {
+    title: 'Administração',
+    items: [
+      { href: '/configuracoes/usuarios', label: 'Usuários', icon: Users, adminOnly: true },
     ],
   },
 ]
@@ -55,8 +65,20 @@ function isItemActive(href: string, pathname: string): boolean {
   return pathname.startsWith(href)
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  role: UserRole
+}
+
+export function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname()
+
+  // Hide admin-only items for non-admin users, and drop empty sections.
+  const visibleSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !item.adminOnly || role === 'admin'),
+    }))
+    .filter((section) => section.items.length > 0)
 
   return (
     <aside className="w-64 min-h-screen bg-slate-900 text-slate-100 flex flex-col border-r border-slate-800">
@@ -73,7 +95,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-5 space-y-6 overflow-y-auto">
-        {navSections.map((section) => (
+        {visibleSections.map((section) => (
           <div key={section.title}>
             <p className="px-3 mb-2 text-[10px] font-semibold tracking-[0.12em] uppercase text-slate-500">
               {section.title}
@@ -118,7 +140,19 @@ export function Sidebar() {
 
       <div className="px-4 py-4 border-t border-slate-800">
         <div className="rounded-lg bg-slate-800/50 px-3 py-2.5 text-xs text-slate-400">
-          <p className="font-medium text-slate-300">VendasApp v1.0</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-medium text-slate-300">VendasApp v1.0</p>
+            <span
+              className={cn(
+                'inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1 ring-inset',
+                role === 'admin'
+                  ? 'bg-blue-500/10 text-blue-300 ring-blue-400/20'
+                  : 'bg-slate-700/50 text-slate-300 ring-slate-500/20'
+              )}
+            >
+              {role === 'admin' ? 'Admin' : 'Funcionário'}
+            </span>
+          </div>
           <p className="text-slate-500 mt-0.5">Operacional</p>
         </div>
       </div>

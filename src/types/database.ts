@@ -2,6 +2,8 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type PaymentMethod = 'cash' | 'credit' | 'debit' | 'pix'
 
+export type UserRole = 'admin' | 'employee'
+
 export interface Database {
   public: {
     Tables: {
@@ -145,6 +147,51 @@ export interface Database {
           }
         ]
       }
+      profiles: {
+        Row: {
+          user_id: string
+          first_name: string | null
+          last_name: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          first_name?: string | null
+          last_name?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          first_name?: string | null
+          last_name?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          user_id: string
+          role: UserRole
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          role?: UserRole
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          role?: UserRole
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       barcode_cache: {
         Row: {
           code: string
@@ -182,6 +229,31 @@ export interface Database {
           p_items: Json
         }
         Returns: string
+      }
+      is_admin: {
+        Args: {
+          p_user_id?: string
+        }
+        Returns: boolean
+      }
+      admin_list_users: {
+        Args: Record<string, never>
+        Returns: {
+          user_id: string
+          email: string
+          first_name: string | null
+          last_name: string | null
+          role: UserRole
+          created_at: string
+          last_sign_in_at: string | null
+        }[]
+      }
+      admin_set_role: {
+        Args: {
+          p_user_id: string
+          p_role: UserRole
+        }
+        Returns: null
       }
     }
   }
