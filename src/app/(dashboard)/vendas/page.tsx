@@ -123,7 +123,7 @@ export default async function VendasPage({
       </div>
 
       <Card className="border-slate-200/80 shadow-sm">
-        <form className="p-4 border-b border-slate-100 grid grid-cols-1 sm:grid-cols-12 gap-3">
+        <form className="p-4 border-b border-slate-100 grid grid-cols-1 sm:grid-cols-12 gap-3 sm:items-end">
           <select
             name="payment"
             defaultValue={payment ?? ''}

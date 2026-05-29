@@ -11,7 +11,10 @@ import {
 import { createClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth/roles'
 import { displayName, initials } from '@/lib/utils/user-display'
+import { emailToUsername, isInternalEmail } from '@/lib/supabase/service'
 import { UserRoleSelect } from './user-role-select'
+import { CreateEmployeeDialog } from './create-employee-dialog'
+import { UserActions } from './user-actions'
 
 export const metadata = {
   title: 'Usuários',
@@ -49,13 +52,16 @@ export default async function UsuariosPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
-          Usuários
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Gerencie quem tem acesso de administrador ao sistema.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+            Usuários
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Gerencie os funcionários e administradores do sistema.
+          </p>
+        </div>
+        <CreateEmployeeDialog />
       </div>
 
       {/* Quick stats */}
@@ -124,12 +130,15 @@ export default async function UsuariosPage() {
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-right">
                   Papel
                 </TableHead>
+                <TableHead className="w-12 text-right pr-4 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <span className="sr-only">Ações</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={4} className="text-center py-12 text-slate-400">
+                  <TableCell colSpan={5} className="text-center py-12 text-slate-400">
                     Nenhum usuário cadastrado.
                   </TableCell>
                 </TableRow>
@@ -172,7 +181,11 @@ export default async function UsuariosPage() {
                                 </span>
                               ) : null}
                             </div>
-                            <p className="text-xs text-slate-500 truncate">{u.email}</p>
+                            <p className="text-xs text-slate-500 truncate">
+                              {isInternalEmail(u.email)
+                                ? `@${emailToUsername(u.email)}`
+                                : u.email}
+                            </p>
                           </div>
                         </div>
                       </TableCell>
@@ -189,6 +202,13 @@ export default async function UsuariosPage() {
                           isSelf={isSelf}
                         />
                       </TableCell>
+                      <TableCell className="text-right pr-4">
+                        <UserActions
+                          userId={u.user_id}
+                          userName={name}
+                          isSelf={isSelf}
+                        />
+                      </TableCell>
                     </TableRow>
                   )
                 })
@@ -198,8 +218,8 @@ export default async function UsuariosPage() {
         </div>
 
         <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
-          Novos usuários cadastrados entram como <strong>Funcionário</strong> por
-          padrão. Promova a <strong>Administrador</strong> quando necessário.
+          Funcionários entram no sistema com o <strong>usuário</strong> e senha definidos aqui.
+          Promova a <strong>Administrador</strong> quando necessário.
         </div>
       </Card>
     </div>

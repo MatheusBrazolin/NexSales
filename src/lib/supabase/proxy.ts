@@ -30,7 +30,8 @@ export async function updateSession(request: NextRequest) {
 
   const isAuthRoute =
     request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/cadastro')
+    request.nextUrl.pathname.startsWith('/cadastro') ||
+    request.nextUrl.pathname.startsWith('/esqueceu-senha')
 
   // Redirect logged-in users away from auth pages
   if (user && isAuthRoute) {

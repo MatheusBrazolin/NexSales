@@ -52,6 +52,7 @@ export function ProductForm({ product, categories, onSubmit }: ProductFormProps)
     register,
     handleSubmit,
     setValue,
+    setError,
     formState: { errors },
   } = useForm<ProductFormData>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -175,6 +176,11 @@ export function ProductForm({ product, categories, onSubmit }: ProductFormProps)
 
       const result = await onSubmit(formData)
       if (result?.error) {
+        if (result.error === 'Código de produto já existe.') {
+          setError('code', { message: result.error })
+          codeInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          codeInputRef.current?.focus()
+        }
         toast.error(result.error)
       }
     })

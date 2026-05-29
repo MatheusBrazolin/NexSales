@@ -109,7 +109,6 @@ function ReceiptBody({ sale, storeName }: { sale: SaleWithItems; storeName: stri
     >
       <div className="text-center mb-2">
         <p className="text-sm font-bold uppercase tracking-wide">{storeName}</p>
-        <p className="text-[10px] text-slate-700">Cupom não fiscal</p>
       </div>
 
       <Separator />
@@ -137,7 +136,10 @@ function ReceiptBody({ sale, storeName }: { sale: SaleWithItems; storeName: stri
         <tbody>
           {sale.sale_items.map((item) => (
             <tr key={item.id} className="align-top">
-              <td className="pr-1 py-0.5 break-words">{item.products.name}</td>
+              <td className="pr-1 py-0.5 break-words">
+                <span className="block">{item.products.name}</span>
+                <span className="text-[9px] text-slate-500">{item.products.code}</span>
+              </td>
               <td className="text-center py-0.5">{item.quantity}</td>
               <td className="text-right py-0.5 whitespace-nowrap">
                 {formatCurrency(item.unit_price)}

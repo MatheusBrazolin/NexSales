@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ShoppingCart, Loader2, AlertCircle } from 'lucide-react'
+import { ShoppingCart, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,6 +13,7 @@ import { signIn } from './actions'
 
 export default function LoginPage() {
   const [serverError, setServerError] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
 
   const {
     register,
@@ -24,7 +25,7 @@ export default function LoginPage() {
 
   async function onSubmit(data: LoginFormData) {
     setServerError(null)
-    const result = await signIn(data.email, data.password)
+    const result = await signIn(data.username, data.password)
     if (result?.error) setServerError(result.error)
   }
 
@@ -49,21 +50,23 @@ export default function LoginPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-slate-700 text-sm font-medium">
-            Email
+          <Label htmlFor="username" className="text-slate-700 text-sm font-medium">
+            Usuário
           </Label>
           <Input
-            id="email"
-            type="email"
-            placeholder="seu@email.com"
-            autoComplete="email"
+            id="username"
+            type="text"
+            placeholder="joana ou admin@loja.com"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
             className="h-11 border-slate-200 focus-visible:ring-2 focus-visible:ring-blue-600/20 focus-visible:border-blue-600"
-            {...register('email')}
+            {...register('username')}
           />
-          {errors.email && (
+          {errors.username && (
             <p className="text-red-600 text-xs flex items-center gap-1.5">
               <AlertCircle className="h-3 w-3" />
-              {errors.email.message}
+              {errors.username.message}
             </p>
           )}
         </div>
@@ -73,21 +76,32 @@ export default function LoginPage() {
             <Label htmlFor="password" className="text-slate-700 text-sm font-medium">
               Senha
             </Label>
-            <button
-              type="button"
+            <Link
+              href="/esqueceu-senha"
               className="text-xs text-blue-600 hover:text-blue-700 font-medium"
             >
               Esqueceu?
+            </Link>
+          </div>
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              className="h-11 border-slate-200 focus-visible:ring-2 focus-visible:ring-blue-600/20 focus-visible:border-blue-600 pr-10"
+              {...register('password')}
+            />
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••"
-            autoComplete="current-password"
-            className="h-11 border-slate-200 focus-visible:ring-2 focus-visible:ring-blue-600/20 focus-visible:border-blue-600"
-            {...register('password')}
-          />
           {errors.password && (
             <p className="text-red-600 text-xs flex items-center gap-1.5">
               <AlertCircle className="h-3 w-3" />

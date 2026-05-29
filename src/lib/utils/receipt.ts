@@ -13,7 +13,6 @@ export function buildReceiptText(
   const sep = '------------------------------'
 
   lines.push(storeName.toUpperCase())
-  lines.push('Cupom não fiscal')
   lines.push(sep)
   lines.push(`Venda: ${shortSaleId(sale.id)}`)
   lines.push(`Data:  ${formatDate(sale.created_at)}`)
@@ -26,6 +25,7 @@ export function buildReceiptText(
     const unit = formatCurrency(item.unit_price).padStart(8, ' ')
     const sub = formatCurrency(item.subtotal).padStart(9, ' ')
     lines.push(`${name.padEnd(18, ' ')} ${qty} ${unit}${sub}`)
+    lines.push(`  Cód: ${item.products.code}`)
   }
 
   lines.push(sep)
