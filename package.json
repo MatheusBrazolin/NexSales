@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "typecheck": "tsc --noEmit",
     "pwa:icons": "node scripts/generate-pwa-icons.mjs"
   },
   "dependencies": {
