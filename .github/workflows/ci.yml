@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build:
-    name: Typecheck and build
+    name: Test, typecheck and build
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -29,10 +29,17 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        # Skip the Electron binary download — CI only runs tests + build, never
+        # packages the desktop app, so the ~100MB binary is dead weight here.
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
         run: npm ci
 
       - name: Type-check
         run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
 
       - name: Build
         # Dummy env vars are enough for `next build` — the real values are

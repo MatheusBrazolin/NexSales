@@ -6,6 +6,7 @@
 
 **Sistema de gestão de vendas e PDV instalável como PWA, construído com Next.js 16 + Supabase.**
 
+[![CI](https://github.com/MatheusBrazolin/vendas-app/actions/workflows/ci.yml/badge.svg)](https://github.com/MatheusBrazolin/vendas-app/actions/workflows/ci.yml)
 [![Live demo](https://img.shields.io/badge/live-vendas--app--topaz.vercel.app-2563eb?style=flat-square)](https://vendas-app-topaz.vercel.app)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth-3ecf8e?style=flat-square&logo=supabase)](https://supabase.com/)
