@@ -45,5 +45,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# claude code local settings (per-machine permissions / task state)
-.claude/settings.local.json
+# editor / tooling local config — not part of the project
+.claude/
