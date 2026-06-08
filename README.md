@@ -195,6 +195,29 @@ scripts/
 └── generate-pwa-icons.mjs  gera os PNGs do PWA a partir do SVG-fonte
 ```
 
+## 🧪 Testes
+
+Testes unitários com **Vitest** (+ jsdom e `fake-indexeddb` para a camada offline).
+Os testes ficam ao lado do código que cobrem (`*.test.ts`).
+
+```bash
+npm test              # roda toda a suíte uma vez
+npm run test:watch    # modo watch durante o desenvolvimento
+npm run test:coverage # relatório de cobertura
+```
+
+A prioridade é a **lógica de risco**, não cobrir tudo às cegas:
+
+| Área | O que é verificado |
+|------|--------------------|
+| `lib/validations` | Schemas Zod (login, funcionário, produto, categoria) — 100% |
+| `lib/offline/sales-repo` | Fila offline: baixa otimista de estoque, idempotência (`client_uuid`), erro terminal × transitório, guarda offline |
+| `lib/offline/products-repo` | Busca offline por nome/código, filtro de inativos/sem estoque |
+| `vendas/actions` | `createSale`: mapeamento de erros do servidor para mensagem + código |
+| `lib/utils/format` | Moeda (BRL), datas, rótulos de pagamento |
+
+UI e *waterfalls* de dados ficam para testes E2E (Playwright) numa etapa futura.
+
 ## 🧠 Cache de código de barras
 
 ```
@@ -224,6 +247,8 @@ scripts/
 - [x] **PWA Fase 2** — cache de produtos em IndexedDB, leitura offline no PDV
 - [x] **PWA Fase 3** — fila de vendas offline + replay idempotente + conflito de estoque
 - [x] **App desktop Windows** — instalável (.exe) via Electron, com offline
+- [x] **Testes unitários** da lógica crítica (Vitest): fila offline, schemas, createSale
+- [ ] Testes E2E (Playwright) do fluxo de venda offline
 - [ ] Emissão de NFC-e via serviço terceirizado
 - [ ] Relatórios exportáveis (CSV/PDF)
 - [ ] Login offline (sessão em cache) para *cold start* sem internet
