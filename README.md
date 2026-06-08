@@ -16,7 +16,22 @@
 
 ---
 
-PDV de balcão para pequenos comércios: leitor USB de código de barras, baixa automática de estoque, cálculo de troco, cadastro de produtos via APIs de barcode públicas com cache permanente, controle de papéis (admin × funcionário) e instalação como Progressive Web App em qualquer máquina ou celular.
+PDV de balcão para pequenos comércios: leitor USB de código de barras, baixa automática de estoque, cálculo de troco, cadastro de produtos via APIs de barcode públicas com cache permanente e controle de papéis (admin × funcionário). Funciona **offline-first** — registra vendas mesmo sem internet e sincroniza ao reconectar — e pode rodar como **PWA** no navegador/celular ou como **app desktop instalável** no Windows.
+
+## Índice
+
+- [Funcionalidades](#-funcionalidades)
+- [Stack](#-stack)
+- [Rodando localmente](#-rodando-localmente)
+- [Deploy](#-deploy)
+- [App Desktop (Windows)](#-app-desktop-windows)
+- [Como o offline funciona](#-como-o-offline-funciona)
+- [Estrutura](#-estrutura)
+- [Testes](#-testes)
+- [Cache de código de barras](#-cache-de-código-de-barras)
+- [Segurança](#-segurança)
+- [Roadmap](#-roadmap)
+- [Licença](#-licença)
 
 ## ✨ Funcionalidades
 
@@ -26,8 +41,10 @@ PDV de balcão para pequenos comércios: leitor USB de código de barras, baixa 
 - **Cancelamento de venda** restrito a admins, com restauração atômica de estoque via função Postgres.
 - **Baixa automática de estoque** ao confirmar a venda, com bloqueio se o estoque ficar negativo.
 - **Dashboard** com KPIs, gráfico de vendas, top produtos, últimas vendas e alerta de produtos com estoque baixo.
-- **PWA instalável** — manifesto + Service Worker permitem instalar o app no PC ou celular com ícone próprio, abertura em janela standalone e atalho na área de trabalho. (Fase 1; offline reads e writes nas próximas fases.)
-- **Autenticação** via Supabase Auth (email + senha) com **RLS** habilitado em todas as tabelas de escrita e middleware Next.js validando sessão server-side.
+- **Funciona offline (offline-first)** — o catálogo é cacheado em IndexedDB e o PDV registra vendas mesmo sem internet, guardando-as numa fila local. Ao reconectar, as vendas são reenviadas ao servidor de forma **idempotente** (chave `client_uuid`), e conflitos de estoque viram vendas "rejeitadas" para revisão manual.
+- **PWA instalável** — manifesto + Service Worker permitem instalar o app no PC ou celular, com ícone próprio, janela standalone e atalho na área de trabalho.
+- **App desktop para Windows** — instalador `.exe` (Electron) para o caixa ter um funcionamento fixo que resiste a quedas de internet. Baixável por uma página admin no próprio site.
+- **Autenticação** via Supabase Auth com **RLS** habilitado em todas as tabelas e middleware Next.js validando a sessão server-side.
 - **Layout responsivo** com sidebar fixa no desktop e drawer hambúrguer no mobile.
 
 ## 🛠️ Stack
@@ -45,6 +62,10 @@ PDV de balcão para pequenos comércios: leitor USB de código de barras, baixa 
 | Toasts | Sonner |
 | Ícones | Lucide React |
 | PWA | Manifest API do Next.js + Service Worker próprio em `public/sw.js` |
+| Offline | [Dexie](https://dexie.org/) (IndexedDB) — cache de leitura + fila de vendas |
+| Desktop | [Electron](https://www.electronjs.org/) + electron-builder (instalador NSIS) |
+| Testes | [Vitest](https://vitest.dev/) + Testing Library + fake-indexeddb |
+| CI | GitHub Actions (typecheck + testes + build a cada push) |
 
 ## 🚀 Rodando localmente
 
@@ -83,7 +104,8 @@ supabase/migrations/
 ├── 20260525000000_barcode_cache.sql    cache de lookups de barcode
 ├── 20260526000000_user_roles.sql       roles admin/employee + trigger de signup
 ├── 20260527000000_profiles.sql         nomes/avatar dos usuários
-└── 20260528000000_cancel_sale.sql      RPC de cancelamento atômico
+├── 20260528000000_cancel_sale.sql      RPC de cancelamento atômico
+└── 20260603000000_offline_sales.sql    client_uuid + RPC idempotente (vendas offline)
 ```
 
 ## 🌐 Deploy
@@ -153,17 +175,43 @@ Para hospedar o `.exe` em outro lugar, defina `NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL`
 > instalador gerado é **não-assinado** (o SmartScreen mostra um aviso na 1ª execução
 > → "Mais informações" → "Executar assim mesmo").
 
+## 🔌 Como o offline funciona
+
+O servidor (Supabase) é sempre a fonte da verdade; o offline é **otimista** e reconcilia ao reconectar.
+
+```
+LEITURA                          ESCRITA (venda)
+SyncProvider sincroniza          Online?
+products/categorias para         ├─ sim → cria no servidor (RPC)
+IndexedDB (Dexie) em cada        │         └─ falha de rede → cai p/ fila
+reconexão / foco.                └─ não → grava na fila local (IndexedDB)
+PDV lê do cache local →                    e baixa o estoque local (otimista)
+funciona com ou sem internet.
+                                 Ao reconectar, flushPendingSales():
+                                 • reenvia cada venda com seu client_uuid
+                                   (idempotente — reenvio nunca duplica)
+                                 • sucesso → remove da fila + re-sincroniza estoque
+                                 • estoque insuficiente → marca "rejeitada"
+                                   p/ revisão manual (não descarta nem repete)
+```
+
+Decisões-chave:
+
+- **Idempotência:** cada venda carrega um `client_uuid` único; a RPC `create_sale_with_items` devolve a venda existente se o UUID já foi gravado, então um reenvio após falha parcial nunca cria duplicata.
+- **Conflito de estoque entre dispositivos:** como o offline é otimista, dois caixas podem vender o mesmo item sem rede. O servidor rejeita o segundo na sincronização (`insufficient_stock`) e a venda vira `rejeitada` para o admin resolver — em vez de furar o estoque silenciosamente.
+- **Limite conhecido:** *login* exige rede (é o Supabase Auth). O cenário coberto é "estava logado e a internet caiu".
+
 ## 📂 Estrutura
 
 ```
 src/
 ├── app/
-│   ├── (auth)/             /login e /cadastro
+│   ├── (auth)/             /login, recuperação de senha (cadastro público desativado)
 │   ├── (dashboard)/        área autenticada
 │   │   ├── dashboard/      KPIs e visão geral (admin)
 │   │   ├── produtos/       CRUD de produtos e categorias (admin)
 │   │   ├── vendas/         PDV em /nova, histórico, detalhe, cancelamento
-│   │   ├── configuracoes/  gestão de usuários (admin)
+│   │   ├── configuracoes/  usuários + baixar app desktop (admin)
 │   │   └── layout.tsx
 │   ├── manifest.ts         PWA manifest
 │   └── layout.tsx          root, fontes, toaster, registro do SW
@@ -233,9 +281,9 @@ UI e *waterfalls* de dados ficam para testes E2E (Playwright) numa etapa futura.
 
 ## 🔐 Segurança
 
-- `.env.local` e `.claude/settings.local.json` no `.gitignore` — segredos e configs por-máquina nunca sobem.
+- `.env*` e a pasta `.claude/` no `.gitignore` — segredos e configs de ferramenta nunca sobem ao repositório.
 - **RLS habilitado** em `products`, `categories`, `sales`, `sale_items`, `user_roles`, `profiles`, `barcode_cache`.
-- Páginas autenticadas usam `requireUser()` / `requireAdmin()` no server, antes de qualquer render.
+- O layout autenticado valida a sessão no server (`getCurrentUser()`) e redireciona para `/login` antes de qualquer render; páginas admin reforçam com `requireAdmin()`.
 - Cancelamento de venda é admin-only no Node **e** na função Postgres (defense in depth — a RPC levanta 42501 se `is_admin()` for falso).
 - Headers do Service Worker pinados em `next.config.ts` (`Content-Type` correto + `no-cache` para garantir propagação de versões novas).
 
