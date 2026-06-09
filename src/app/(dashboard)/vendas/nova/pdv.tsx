@@ -397,33 +397,23 @@ export function PDV() {
                 </div>
 
                 {hasCashEntered && (
+                  // Destaque grande do troco — o dono da loja pediu pra ser
+                  // bem visível porque o operador precisa bater o olho e ver
+                  // imediatamente quanto devolver. Fundo cheio (não translúcido)
+                  // com cor vívida, valor em 4xl, label em caixa alta acima.
                   <div
                     className={
                       cashShort
-                        ? 'rounded-md bg-red-50 border border-red-200 px-3 py-2'
-                        : 'rounded-md bg-emerald-100/60 border border-emerald-300 px-3 py-2'
+                        ? 'rounded-xl bg-red-600 px-4 py-4 shadow-md shadow-red-900/10 text-white'
+                        : 'rounded-xl bg-emerald-600 px-4 py-4 shadow-md shadow-emerald-900/10 text-white'
                     }
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span
-                        className={
-                          cashShort
-                            ? 'text-xs font-medium text-red-700'
-                            : 'text-xs font-medium text-emerald-900'
-                        }
-                      >
-                        {cashShort ? 'Falta receber' : 'Troco'}
-                      </span>
-                      <span
-                        className={
-                          cashShort
-                            ? 'text-lg font-bold tabular-nums text-red-700'
-                            : 'text-lg font-bold tabular-nums text-emerald-900'
-                        }
-                      >
-                        {formatCurrency(Math.abs(change))}
-                      </span>
-                    </div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider opacity-90">
+                      {cashShort ? 'Falta receber' : 'Troco a devolver'}
+                    </p>
+                    <p className="text-4xl font-bold tabular-nums leading-tight mt-1">
+                      {formatCurrency(Math.abs(change))}
+                    </p>
                   </div>
                 )}
               </div>
