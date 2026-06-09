@@ -13,7 +13,6 @@ import {
 import { Pagination } from '@/components/ui/pagination'
 import { SalesFilters } from '@/components/sales/sales-filters'
 import { getSalesPaged } from '@/lib/queries/sales'
-import { isAdmin } from '@/lib/auth/roles'
 import { formatCurrency, formatDate, PAYMENT_LABELS } from '@/lib/utils/format'
 import type { PaymentMethod } from '@/types/database'
 
@@ -63,8 +62,7 @@ function isIsoDate(value: string | undefined): value is string {
 
 interface VendasSearchParams {
   payment?: string
-  from?: string
-  to?: string
+  day?: string
   page?: string
 }
 
@@ -75,21 +73,20 @@ export default async function VendasPage({
 }) {
   const sp = await searchParams
   const payment = parsePayment(sp.payment)
-  const from = isIsoDate(sp.from) ? sp.from : undefined
-  const to = isIsoDate(sp.to) ? sp.to : undefined
+  const day = isIsoDate(sp.day) ? sp.day : undefined
   const page = sp.page ? Math.max(1, parseInt(sp.page, 10) || 1) : 1
 
-  const [{ items: sales, total, totalPages, pageSize }, admin] = await Promise.all([
-    getSalesPaged({ payment, from, to, page }),
-    isAdmin(),
-  ])
+  const { items: sales, total, totalPages, pageSize } = await getSalesPaged({
+    payment,
+    day,
+    page,
+  })
 
-  const hasFilters = Boolean(payment || from || to)
+  const hasFilters = Boolean(payment || day)
 
   const paginationParams: Record<string, string | undefined> = {
     payment,
-    from,
-    to,
+    day,
   }
 
   return (
@@ -103,22 +100,17 @@ export default async function VendasPage({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {/* Fechar caixa é admin-only — a página /vendas/fechamento chama
-              requireAdmin() e redireciona funcionário pra /vendas/nova.
-              Sem essa checagem, o funcionário clicava no botão e caía no
-              loop de redirect, parecendo bug. */}
-          {admin && (
-            <Button
-              asChild
-              variant="outline"
-              className="border-slate-200 text-slate-700 hover:bg-slate-50"
-            >
-              <Link href="/vendas/fechamento">
-                <Wallet className="mr-1.5 h-4 w-4" />
-                Fechar caixa
-              </Link>
-            </Button>
-          )}
+          {/* Fechar caixa: funcionário usa todo final de dia, não é admin-only. */}
+          <Button
+            asChild
+            variant="outline"
+            className="border-slate-200 text-slate-700 hover:bg-slate-50"
+          >
+            <Link href="/vendas/fechamento">
+              <Wallet className="mr-1.5 h-4 w-4" />
+              Fechar caixa
+            </Link>
+          </Button>
           <Button asChild className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
             <Link href="/vendas/nova">
               <Plus className="mr-1.5 h-4 w-4" />
@@ -131,8 +123,7 @@ export default async function VendasPage({
       <Card className="border-slate-200/80 shadow-sm">
         <SalesFilters
           payment={payment ?? ''}
-          from={from ?? ''}
-          to={to ?? ''}
+          day={day ?? ''}
           hasFilters={hasFilters}
         />
 

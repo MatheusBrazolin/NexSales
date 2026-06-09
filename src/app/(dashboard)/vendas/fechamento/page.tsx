@@ -1,6 +1,7 @@
+import { redirect } from 'next/navigation'
 import { getCashClose, todayLocalISO } from '@/lib/queries/cash-close'
 import { CashCloseView } from '@/components/sales/cash-close-view'
-import { requireAdmin } from '@/lib/auth/roles'
+import { getCurrentUser } from '@/lib/auth/roles'
 
 export const metadata = {
   title: 'Fechamento de caixa',
@@ -11,7 +12,12 @@ export default async function FechamentoPage({
 }: {
   searchParams: Promise<{ date?: string }>
 }) {
-  await requireAdmin()
+  // Aberto pra qualquer usuário autenticado — funcionário fecha o caixa
+  // todo final de dia. Antes chamava requireAdmin() e o employee era
+  // redirecionado pra /vendas/nova, dando impressão de que o botão
+  // "Fechar caixa" estava bugado.
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
 
   const { date } = await searchParams
   const localDate = isValidDate(date) ? date : todayLocalISO()

@@ -1,10 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
+import { brDayRangeUTC } from '@/lib/utils/datetime'
 import type { PaymentMethod, Sale, SaleWithItems } from '@/types/database'
 
 export interface SalesListParams {
   payment?: PaymentMethod
-  from?: string // YYYY-MM-DD
-  to?: string // YYYY-MM-DD
+  /** Filtro de dia exato (YYYY-MM-DD em BRT). */
+  day?: string
   page?: number
   pageSize?: number
 }
@@ -35,11 +36,13 @@ export async function getSalesPaged(
     query = query.eq('payment_method', params.payment)
   }
 
-  if (params.from) {
-    query = query.gte('created_at', new Date(`${params.from}T00:00:00`).toISOString())
-  }
-  if (params.to) {
-    query = query.lte('created_at', new Date(`${params.to}T23:59:59.999`).toISOString())
+  if (params.day) {
+    // Filtro de dia exato em BRT. brDayRangeUTC traduz "2026-06-02" para
+    // o intervalo UTC que cobre 00:00 → 23:59:59.999 em São Paulo —
+    // sem ele, uma venda às 22h SP do dia 02 (= 01h UTC do dia 03) cairia
+    // no dia errado, e filtrar "03" mostraria venda do "02".
+    const { start, end } = brDayRangeUTC(params.day)
+    query = query.gte('created_at', start).lte('created_at', end)
   }
 
   const from = (page - 1) * pageSize
