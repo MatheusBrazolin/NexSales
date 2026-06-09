@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { parseRecipientList, pickDeliverableEmails } from './report-recipients'
+import {
+  parseRecipientList,
+  pickDeliverableEmails,
+  mergeReportRecipients,
+} from './report-recipients'
 
 describe('parseRecipientList', () => {
   it('returns empty array for undefined/empty', () => {
@@ -40,5 +44,49 @@ describe('pickDeliverableEmails', () => {
 
   it('returns empty when only internal accounts exist', () => {
     expect(pickDeliverableEmails(['a@vendas-app.interno'])).toEqual([])
+  })
+})
+
+describe('mergeReportRecipients', () => {
+  it('merges the three sources: admins, REPORT_EMAIL and the table', () => {
+    const result = mergeReportRecipients(
+      ['dono@gmail.com', 'caixa01@vendas-app.interno'],
+      'gestor@empresa.com, contador@empresa.com',
+      ['extra@cliente.com'],
+    )
+    expect(result).toEqual([
+      'dono@gmail.com',
+      'gestor@empresa.com',
+      'contador@empresa.com',
+      'extra@cliente.com',
+    ])
+  })
+
+  it('dedupes case-insensitively across all three sources', () => {
+    const result = mergeReportRecipients(
+      ['Dono@Gmail.com'],
+      'dono@gmail.com',
+      ['DONO@gmail.com'],
+    )
+    expect(result).toEqual(['dono@gmail.com'])
+  })
+
+  it('drops internal usernames coming from any source', () => {
+    const result = mergeReportRecipients(
+      ['caixa01@vendas-app.interno'],
+      undefined,
+      ['caixa02@vendas-app.interno', 'real@cliente.com'],
+    )
+    expect(result).toEqual(['real@cliente.com'])
+  })
+
+  it('handles empty/undefined sources gracefully', () => {
+    expect(mergeReportRecipients([], undefined, [])).toEqual([])
+  })
+
+  it('still works when only the table has recipients', () => {
+    expect(mergeReportRecipients([], undefined, ['only@table.com'])).toEqual([
+      'only@table.com',
+    ])
   })
 })

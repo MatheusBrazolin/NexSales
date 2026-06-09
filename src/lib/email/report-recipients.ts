@@ -36,13 +36,37 @@ export function pickDeliverableEmails(emails: (string | null | undefined)[]): st
 }
 
 /**
- * Resolves who should receive the daily report:
+ * Merges the three recipient sources into one deliverable list. Pure +
+ * exported so the merge behavior can be unit-tested without hitting Supabase.
+ *
+ *   1. admin account emails (internal usernames are filtered out downstream)
+ *   2. the REPORT_EMAIL env value (comma/semicolon-separated)
+ *   3. active addresses managed via the admin UI (report_recipients table)
+ *
+ * `pickDeliverableEmails` dedupes case-insensitively and drops internal/empty
+ * addresses, so the three sources can overlap freely.
+ */
+export function mergeReportRecipients(
+  adminEmails: (string | null | undefined)[],
+  envValue: string | undefined,
+  dbEmails: (string | null | undefined)[],
+): string[] {
+  return pickDeliverableEmails([
+    ...adminEmails,
+    ...parseRecipientList(envValue),
+    ...dbEmails,
+  ])
+}
+
+/**
+ * Resolves who should receive the daily report by merging:
  *   1. every admin whose account has a REAL email (internal usernames skipped)
- *   2. plus any address listed in REPORT_EMAIL (comma-separated)
+ *   2. any address listed in REPORT_EMAIL (comma-separated)
+ *   3. active addresses managed by admins in the report_recipients table
  *
  * The REPORT_EMAIL override exists because admins created in-app log in by
  * username and have no real inbox — set it to the owner's real address to
- * guarantee delivery.
+ * guarantee delivery. The table lets admins add/remove extra recipients in-app.
  */
 export async function getReportRecipients(): Promise<string[]> {
   const service = createServiceClient()
@@ -66,7 +90,12 @@ export async function getReportRecipients(): Promise<string[]> {
     .filter((u) => adminIds.has(u.id))
     .map((u) => u.email)
 
-  const envEmails = parseRecipientList(process.env.REPORT_EMAIL)
+  const { data: dbRows, error: dbError } = await service
+    .from('report_recipients')
+    .select('email')
+    .eq('active', true)
+  if (dbError) throw new Error(dbError.message)
+  const dbEmails = (dbRows ?? []).map((r) => r.email)
 
-  return pickDeliverableEmails([...adminEmails, ...envEmails])
+  return mergeReportRecipients(adminEmails, process.env.REPORT_EMAIL, dbEmails)
 }
