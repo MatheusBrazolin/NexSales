@@ -65,6 +65,7 @@ export function SalesFilters({
             <option value="pix">PIX</option>
             <option value="credit">Crédito</option>
             <option value="debit">Débito</option>
+            <option value="fiado">Fiado</option>
           </select>
         </div>
 

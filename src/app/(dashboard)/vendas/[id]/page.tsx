@@ -37,6 +37,10 @@ const PAYMENT_STYLES: Record<PaymentMethod, PaymentStyle> = {
     badge: 'bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-600/15',
     dot: 'bg-orange-500',
   },
+  fiado: {
+    badge: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/15',
+    dot: 'bg-amber-500',
+  },
 }
 
 function PaymentBadge({ method }: { method: PaymentMethod }) {

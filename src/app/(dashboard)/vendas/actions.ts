@@ -16,6 +16,8 @@ interface CreateSaleInput {
   items: SaleItem[]
   /** Idempotency key for offline sales. Null/omitted for normal online sales. */
   client_uuid?: string
+  /** Required when payment_method is 'fiado'. */
+  customer_id?: string | null
 }
 
 /**
@@ -29,6 +31,7 @@ export type CreateSaleErrorCode =
   | 'product_not_found'
   | 'empty_cart'
   | 'unauthenticated'
+  | 'customer_required'
   | 'unknown'
 
 export interface CreateSaleResult {
@@ -45,6 +48,7 @@ export async function createSale(input: CreateSaleInput): Promise<CreateSaleResu
     p_notes: input.notes || null,
     p_items: input.items as unknown as Json,
     p_client_uuid: input.client_uuid ?? null,
+    p_customer_id: input.customer_id ?? null,
   })
 
   if (error) {
@@ -61,6 +65,9 @@ export async function createSale(input: CreateSaleInput): Promise<CreateSaleResu
     }
     if (msg.includes('unauthenticated')) {
       return { error: 'Sessão expirada. Faça login novamente.', code: 'unauthenticated' }
+    }
+    if (msg.includes('customer_required')) {
+      return { error: 'Selecione um cliente para venda fiada.', code: 'customer_required' }
     }
     return { error: error.message, code: 'unknown' }
   }

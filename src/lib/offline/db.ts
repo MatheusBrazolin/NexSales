@@ -41,6 +41,8 @@ export interface PendingSale {
   notes: string
   items: PendingSaleItem[]
   total: number
+  /** UUID of the customer for fiado sales; null/undefined for regular sales. */
+  customer_id?: string | null
   createdAt: string // ISO timestamp
   /** `pending` = waiting to sync; `failed` = server rejected (e.g. stock), needs review. */
   status: 'pending' | 'failed'

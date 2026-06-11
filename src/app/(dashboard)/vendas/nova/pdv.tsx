@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -14,6 +14,9 @@ import {
   CloudOff,
   Printer,
   X,
+  UserRound,
+  UserPlus,
+  Phone,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,10 +33,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { ProductSearch } from '@/components/sales/product-search'
 import { Cart } from '@/components/sales/cart'
 import { createSale } from '../actions'
+import { searchCustomers, createCustomer } from '../../clientes/actions'
 import { queueSale } from '@/lib/offline/sales-repo'
 import { formatCurrency } from '@/lib/utils/format'
 import { printReceipt } from '@/lib/utils/print-receipt'
-import type { CartItem, PaymentMethod } from '@/types/database'
+import type { CartItem, CustomerBalance, PaymentMethod } from '@/types/database'
 
 /** Snapshot of a sale saved offline, for the provisional confirmation banner. */
 interface OfflineSaleConfirmation {
@@ -47,6 +51,7 @@ const PAYMENT_OPTIONS: { value: PaymentMethod; label: string }[] = [
   { value: 'pix', label: 'PIX' },
   { value: 'credit', label: 'Cartão de Crédito' },
   { value: 'debit', label: 'Cartão de Débito' },
+  { value: 'fiado', label: 'Fiado' },
 ]
 
 export function PDV() {
@@ -58,13 +63,23 @@ export function PDV() {
   // Set after a sale is saved offline — drives the provisional receipt banner.
   const [offlineSale, setOfflineSale] = useState<OfflineSaleConfirmation | null>(null)
   // Track whether the user has tried to confirm the sale at least once.
-  // Used to show validation feedback (red border, error message) only AFTER
-  // the first attempt, so a fresh form doesn't look like it's already in error.
   const [triedSubmit, setTriedSubmit] = useState(false)
-  // Free-text input bound to the "valor recebido" field. We keep it as string
-  // so the user can type "12,50" or partial numbers without React fighting them.
+  // Free-text input bound to the "valor recebido" field.
   const [cashReceivedRaw, setCashReceivedRaw] = useState('')
+
+  // --- Fiado: seleção de cliente ---
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerBalance | null>(null)
+  const [customerQuery, setCustomerQuery] = useState('')
+  const [customerResults, setCustomerResults] = useState<CustomerBalance[]>([])
+  const [isSearchingCustomer, setIsSearchingCustomer] = useState(false)
+  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false)
+  const [newCustomerName, setNewCustomerName] = useState('')
+  const [newCustomerPhone, setNewCustomerPhone] = useState('')
+  const [isCreatingCustomer, setIsCreatingCustomer] = useState(false)
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const paymentMissing = !paymentMethod
+  const customerMissing = paymentMethod === 'fiado' && !selectedCustomer
 
   const total = cartItems.reduce(
     (sum, item) => sum + item.product.sale_price * item.quantity,
@@ -110,6 +125,59 @@ export function PDV() {
     setCartItems((prev) => prev.filter((item) => item.product.id !== productId))
   }
 
+  // Busca debounced de clientes ao digitar
+  useEffect(() => {
+    if (paymentMethod !== 'fiado') return
+    if (!customerQuery.trim()) {
+      setCustomerResults([])
+      return
+    }
+    if (searchDebounce.current) clearTimeout(searchDebounce.current)
+    searchDebounce.current = setTimeout(async () => {
+      setIsSearchingCustomer(true)
+      const result = await searchCustomers(customerQuery)
+      setCustomerResults(result.customers ?? [])
+      setIsSearchingCustomer(false)
+    }, 350)
+    return () => {
+      if (searchDebounce.current) clearTimeout(searchDebounce.current)
+    }
+  }, [customerQuery, paymentMethod])
+
+  function formatPhone(value: string): string {
+    const digits = value.replace(/\D/g, '').slice(0, 11)
+    if (digits.length <= 2) return digits.length ? `(${digits}` : ''
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+  }
+
+  async function handleCreateCustomer() {
+    if (!newCustomerName.trim() || !newCustomerPhone.trim()) return
+    setIsCreatingCustomer(true)
+    const result = await createCustomer({ fullName: newCustomerName, phone: newCustomerPhone })
+    setIsCreatingCustomer(false)
+    if (result.error) {
+      toast.error('Erro ao criar cliente: ' + result.error)
+      return
+    }
+    if (result.customer) {
+      setSelectedCustomer({
+        ...result.customer,
+        total_fiado: 0,
+        total_paid: 0,
+        current_debt: 0,
+        last_payment_at: null,
+      })
+      setCustomerQuery('')
+      setCustomerResults([])
+      setShowNewCustomerForm(false)
+      setNewCustomerName('')
+      setNewCustomerPhone('')
+      toast.success(`Cliente "${result.customer.full_name}" cadastrado!`)
+    }
+  }
+
   async function handleSubmit() {
     setTriedSubmit(true)
 
@@ -121,12 +189,17 @@ export function PDV() {
       toast.error('Selecione o método de pagamento')
       return
     }
-    // Cash sales: block if the entered amount is less than the total. The
-    // cashier might still confirm a cash sale without typing anything in
-    // (e.g. they already calculated the change in their head) — only when
-    // they DID type something AND it's short do we refuse.
     if (paymentMethod === 'cash' && hasCashEntered && cashShort) {
       toast.error('Valor recebido é menor que o total da venda')
+      return
+    }
+    if (paymentMethod === 'fiado' && !selectedCustomer) {
+      toast.error('Selecione um cliente para a venda fiada')
+      return
+    }
+    // Fiado não pode ser salvo offline (o cliente precisa existir no servidor)
+    if (paymentMethod === 'fiado' && typeof navigator !== 'undefined' && !navigator.onLine) {
+      toast.error('Vendas fiadas precisam de conexão com a internet')
       return
     }
 
@@ -157,6 +230,7 @@ export function PDV() {
           notes,
           items: rpcItems,
           client_uuid: clientUuid,
+          customer_id: selectedCustomer?.id ?? null,
         })
 
         if (result.error) {
@@ -184,6 +258,7 @@ export function PDV() {
         payment_method: paymentMethod,
         notes,
         total,
+        customer_id: selectedCustomer?.id ?? null,
         items: cartItems.map((item) => ({
           product_id: item.product.id,
           quantity: item.quantity,
@@ -233,11 +308,14 @@ export function PDV() {
     setNotes('')
     setCashReceivedRaw('')
     setTriedSubmit(false)
+    setSelectedCustomer(null)
+    setCustomerQuery('')
+    setCustomerResults([])
+    setShowNewCustomerForm(false)
+    setNewCustomerName('')
+    setNewCustomerPhone('')
   }
 
-  // Keep the button clickable when the payment method is missing so the user
-  // gets explicit feedback (toast + red border on the dropdown) instead of a
-  // silent disabled button that doesn't explain why nothing happens.
   const canSubmit = !isSubmitting && cartItems.length > 0
 
   return (
@@ -339,16 +417,17 @@ export function PDV() {
               </Label>
               <Select
                 value={paymentMethod}
-                // Base UI uses `items` to map raw values → labels in
-                // <SelectValue>. Without it the trigger renders "debit"
-                // instead of "Cartão de Débito".
                 items={PAYMENT_OPTIONS}
                 onValueChange={(v) => {
                   const next = v as PaymentMethod
                   setPaymentMethod(next)
-                  // Reset the cash-received field when switching away from
-                  // cash so a stale value doesn't follow the user around.
                   if (next !== 'cash') setCashReceivedRaw('')
+                  if (next !== 'fiado') {
+                    setSelectedCustomer(null)
+                    setCustomerQuery('')
+                    setCustomerResults([])
+                    setShowNewCustomerForm(false)
+                  }
                 }}
               >
                 <SelectTrigger
@@ -443,6 +522,135 @@ export function PDV() {
               </div>
             )}
 
+            {paymentMethod === 'fiado' && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 space-y-3">
+                <Label className="text-xs font-medium text-amber-900 flex items-center gap-1.5">
+                  <UserRound className="h-3.5 w-3.5 text-amber-700" />
+                  Cliente <span className="text-red-500">*</span>
+                </Label>
+
+                {selectedCustomer ? (
+                  <div className="rounded-md bg-white border border-amber-200 px-3 py-2 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{selectedCustomer.full_name}</p>
+                        {selectedCustomer.phone && (
+                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                            <Phone className="h-3 w-3" />
+                            {selectedCustomer.phone}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedCustomer(null); setCustomerQuery('') }}
+                        className="text-slate-400 hover:text-slate-700 shrink-0"
+                        aria-label="Trocar cliente"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {selectedCustomer.current_debt > 0 ? (
+                      <p className="text-xs font-medium text-red-600 bg-red-50 rounded px-2 py-1">
+                        Possui {formatCurrency(selectedCustomer.current_debt)} em aberto
+                      </p>
+                    ) : (
+                      <p className="text-xs font-medium text-emerald-700 bg-emerald-50 rounded px-2 py-1">
+                        Sem débitos pendentes
+                      </p>
+                    )}
+                  </div>
+                ) : showNewCustomerForm ? (
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Nome completo *"
+                      value={newCustomerName}
+                      onChange={(e) => setNewCustomerName(e.target.value)}
+                      className="h-9 text-sm border-amber-200 bg-white"
+                      autoFocus
+                    />
+                    <Input
+                      placeholder="Telefone *"
+                      value={newCustomerPhone}
+                      onChange={(e) => setNewCustomerPhone(formatPhone(e.target.value))}
+                      inputMode="numeric"
+                      className="h-9 text-sm border-amber-200 bg-white"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="flex-1 h-8 bg-amber-600 hover:bg-amber-700 text-white text-xs"
+                        disabled={!newCustomerName.trim() || !newCustomerPhone.trim() || isCreatingCustomer}
+                        onClick={handleCreateCustomer}
+                      >
+                        {isCreatingCustomer ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Cadastrar'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs border-amber-200"
+                        onClick={() => setShowNewCustomerForm(false)}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                      <Input
+                        placeholder="Buscar por nome ou telefone..."
+                        value={customerQuery}
+                        onChange={(e) => setCustomerQuery(e.target.value)}
+                        className="h-9 pl-8 text-sm border-amber-200 bg-white"
+                        autoFocus
+                      />
+                      {isSearchingCustomer && (
+                        <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-slate-400" />
+                      )}
+                    </div>
+
+                    {customerResults.length > 0 && (
+                      <ul className="rounded-md border border-amber-200 bg-white divide-y divide-slate-100 max-h-36 overflow-y-auto">
+                        {customerResults.map((c) => (
+                          <li key={c.id}>
+                            <button
+                              type="button"
+                              className="w-full text-left px-3 py-2 hover:bg-amber-50 transition-colors"
+                              onClick={() => { setSelectedCustomer(c); setCustomerQuery(''); setCustomerResults([]) }}
+                            >
+                              <p className="text-sm font-medium text-slate-800">{c.full_name}</p>
+                              {c.phone && <p className="text-xs text-slate-500">{c.phone}</p>}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {customerQuery.trim() && !isSearchingCustomer && customerResults.length === 0 && (
+                      <p className="text-xs text-slate-500 text-center py-1">Nenhum cliente encontrado.</p>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setShowNewCustomerForm(true)}
+                      className="w-full flex items-center justify-center gap-1.5 text-xs text-amber-700 hover:text-amber-900 font-medium py-1"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      Cadastrar novo cliente
+                    </button>
+                  </div>
+                )}
+
+                {triedSubmit && customerMissing && (
+                  <p className="text-red-500 text-xs">Selecione um cliente para continuar.</p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label htmlFor="notes" className="text-xs font-medium text-slate-700">
                 Observações
@@ -471,7 +679,7 @@ export function PDV() {
             </div>
 
             <Button
-              className="w-full h-12 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold text-base shadow-sm shadow-green-900/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="hidden lg:flex w-full h-12 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold text-base shadow-sm shadow-green-900/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               onClick={handleSubmit}
               disabled={!canSubmit}
             >

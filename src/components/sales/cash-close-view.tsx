@@ -52,6 +52,11 @@ const PAYMENT_STYLES: Record<PaymentMethod, PaymentStyle> = {
     dot: 'bg-orange-500',
     bar: 'bg-orange-500',
   },
+  fiado: {
+    badge: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/15',
+    dot: 'bg-amber-500',
+    bar: 'bg-amber-500',
+  },
 }
 
 interface CashCloseViewProps {

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
+import Script from 'next/script'
 import { Toaster } from 'sonner'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register'
@@ -69,7 +70,9 @@ export default function RootLayout({
           appears. We stash the event globally and re-dispatch a custom event
           the InstallButton can pick up whenever it mounts.
         */}
-        <script
+        <Script
+          id="bip-capture"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__bip=e;window.dispatchEvent(new Event('bipready'));});window.addEventListener('appinstalled',function(){window.__bip=null;});`,
           }}

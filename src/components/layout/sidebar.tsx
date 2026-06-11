@@ -14,6 +14,7 @@ import {
   MonitorDown,
   BarChart3,
   Menu,
+  UserRound,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
@@ -47,6 +48,7 @@ const navSections: NavSection[] = [
     items: [
       { href: '/vendas/nova', label: 'Nova Venda', icon: ShoppingBag },
       { href: '/vendas', label: 'Histórico', icon: ShoppingCart },
+      { href: '/clientes', label: 'Clientes / Fiado', icon: UserRound },
     ],
   },
   {

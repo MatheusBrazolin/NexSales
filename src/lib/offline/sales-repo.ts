@@ -22,6 +22,7 @@ export interface QueueSaleInput {
   notes: string
   items: PendingSaleItem[]
   total: number
+  customer_id?: string | null
 }
 
 /**
@@ -37,6 +38,7 @@ export async function queueSale(input: QueueSaleInput): Promise<void> {
     notes: input.notes,
     items: input.items,
     total: input.total,
+    customer_id: input.customer_id ?? null,
     createdAt: new Date().toISOString(),
     status: 'pending',
     attempts: 0,
@@ -82,6 +84,7 @@ const TERMINAL_CODES: ReadonlySet<string> = new Set([
   'insufficient_stock',
   'product_not_found',
   'empty_cart',
+  'customer_required',
 ])
 
 // Guards against overlapping flushes — SyncProvider can trigger on mount,
@@ -124,6 +127,7 @@ export async function flushPendingSales(): Promise<{ synced: number; failed: num
           quantity: i.quantity,
         })),
         client_uuid: sale.id,
+        customer_id: sale.customer_id ?? null,
       }).catch((err: unknown) => ({
         // A thrown call means the request never reached the server (network).
         error: err instanceof Error ? err.message : 'network',
