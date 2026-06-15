@@ -98,7 +98,7 @@ export function Cart({ items, onUpdateQty, onUpdatePrice, onRemove }: CartProps)
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1 group/price">
+                  <div className="flex items-center gap-1">
                     <span
                       className={`text-xs ${isPriceOverridden ? 'text-amber-600 font-semibold' : 'text-slate-500'}`}
                     >
@@ -112,7 +112,7 @@ export function Cart({ items, onUpdateQty, onUpdatePrice, onRemove }: CartProps)
                     <button
                       type="button"
                       onClick={() => startEdit(item)}
-                      className="text-slate-300 hover:text-slate-500 opacity-0 group-hover/price:opacity-100 transition-opacity"
+                      className="text-slate-300 hover:text-blue-500 transition-colors"
                       aria-label={`Editar preço de ${item.product.name}`}
                     >
                       <Pencil className="h-3 w-3" />
