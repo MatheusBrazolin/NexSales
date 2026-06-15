@@ -133,18 +133,6 @@ function LoginPageContent() {
                   {profile.username}
                 </p>
               </button>
-              <button
-                onClick={() => {
-                  removeProfile(profile.username)
-                  const updated = getRecentProfiles()
-                  setProfiles(updated)
-                  if (updated.length === 0) setMode('full-form')
-                }}
-                className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-slate-200 hover:bg-red-500 text-slate-500 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all text-[10px] font-bold leading-none"
-                aria-label={`Remover ${profile.username}`}
-              >
-                ×
-              </button>
             </div>
           ))}
 

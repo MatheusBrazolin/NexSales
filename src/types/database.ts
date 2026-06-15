@@ -420,4 +420,5 @@ export type SaleWithItems = Sale & {
 export type CartItem = {
   product: Product
   quantity: number
+  customPrice?: number
 }

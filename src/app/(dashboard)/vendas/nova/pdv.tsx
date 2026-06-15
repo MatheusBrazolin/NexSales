@@ -82,8 +82,8 @@ export function PDV() {
   const customerMissing = paymentMethod === 'fiado' && !selectedCustomer
 
   const total = cartItems.reduce(
-    (sum, item) => sum + item.product.sale_price * item.quantity,
-    0
+    (sum, item) => sum + (item.customPrice ?? item.product.sale_price) * item.quantity,
+    0,
   )
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
@@ -117,6 +117,14 @@ export function PDV() {
     setCartItems((prev) =>
       prev.map((item) =>
         item.product.id === productId ? { ...item, quantity: qty } : item
+      )
+    )
+  }
+
+  function handleUpdatePrice(productId: string, price: number) {
+    setCartItems((prev) =>
+      prev.map((item) =>
+        item.product.id === productId ? { ...item, customPrice: price } : item
       )
     )
   }
@@ -212,6 +220,7 @@ export function PDV() {
     const rpcItems = cartItems.map((item) => ({
       product_id: item.product.id,
       quantity: item.quantity,
+      ...(item.customPrice !== undefined ? { unit_price: item.customPrice } : {}),
     }))
 
     // `finally` guarantees the button is re-enabled no matter which path (or
@@ -264,7 +273,7 @@ export function PDV() {
           product_id: item.product.id,
           quantity: item.quantity,
           name: item.product.name,
-          unit_price: item.product.sale_price,
+          unit_price: item.customPrice ?? item.product.sale_price,
         })),
       })
     } catch {
@@ -396,6 +405,7 @@ export function PDV() {
             <Cart
               items={cartItems}
               onUpdateQty={handleUpdateQty}
+              onUpdatePrice={handleUpdatePrice}
               onRemove={handleRemove}
             />
           </CardContent>

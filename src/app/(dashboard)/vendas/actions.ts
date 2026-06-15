@@ -8,6 +8,7 @@ import type { Json, PaymentMethod } from '@/types/database'
 interface SaleItem {
   product_id: string
   quantity: number
+  unit_price?: number
 }
 
 interface CreateSaleInput {
