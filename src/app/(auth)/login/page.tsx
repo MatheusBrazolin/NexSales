@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, AlertCircle, Eye, EyeOff, ArrowLeft, Plus } from 'lucide-react'
+import { Loader2, AlertCircle, Eye, EyeOff, ArrowLeft, Plus, ShoppingBag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -77,7 +77,11 @@ function LoginPageContent() {
         removeProfile(selected)
         setServerError(result.error)
       }
-    } catch {
+    } catch (err: unknown) {
+      // Next.js redirect() throws NEXT_REDIRECT — login succeeded, keep the profile
+      if (err instanceof Error && (err as { digest?: string }).digest?.startsWith('NEXT_REDIRECT')) {
+        throw err
+      }
       removeProfile(selected)
     } finally {
       setIsSubmitting(false)
@@ -99,7 +103,11 @@ function LoginPageContent() {
         removeProfile(data.username)
         setServerError(result.error)
       }
-    } catch {
+    } catch (err: unknown) {
+      // Next.js redirect() throws NEXT_REDIRECT — login succeeded, keep the profile
+      if (err instanceof Error && (err as { digest?: string }).digest?.startsWith('NEXT_REDIRECT')) {
+        throw err
+      }
       removeProfile(data.username)
     }
   }
@@ -107,7 +115,7 @@ function LoginPageContent() {
   const MobileBrand = () => (
     <div className="flex lg:hidden items-center gap-2.5 mb-10">
       <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20">
-        <span className="text-white font-extrabold text-sm select-none">N</span>
+        <ShoppingBag className="h-5 w-5 text-white" strokeWidth={2} />
       </div>
       <div className="flex flex-col leading-tight">
         <span className="font-bold text-slate-900">NexSales</span>

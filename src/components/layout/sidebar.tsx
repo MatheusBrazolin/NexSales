@@ -18,6 +18,7 @@ import {
   UserRound,
   Sun,
   Moon,
+  Store,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
@@ -217,7 +218,7 @@ function SidebarBrand() {
           transition={{ type: 'spring', stiffness: 400, damping: 20 }}
           className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20 ring-1 ring-white/10 shrink-0"
         >
-          <span className="text-white font-extrabold text-base select-none tracking-tight">N</span>
+          <Store className="h-5 w-5 text-white" strokeWidth={2} />
         </motion.div>
         <div className="flex flex-col leading-tight">
           <span className="font-semibold text-white text-base tracking-tight">NexSales</span>
