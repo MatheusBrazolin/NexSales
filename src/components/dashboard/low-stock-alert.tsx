@@ -3,9 +3,10 @@ import { AlertTriangle, ArrowRight, PackageCheck } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getLowStock } from '@/lib/queries/products'
+import { tryQuery } from '@/lib/supabase/try-query'
 
 export async function LowStockAlert() {
-  const products = await getLowStock()
+  const { data: products } = await tryQuery(() => getLowStock(), [])
 
   if (products.length === 0) {
     return (

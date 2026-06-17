@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getTopProducts } from '@/lib/queries/sales'
+import { tryQuery } from '@/lib/supabase/try-query'
 import { TrendingUp } from 'lucide-react'
 
 const RANK_COLORS = [
@@ -11,7 +12,7 @@ const RANK_COLORS = [
 ]
 
 export async function TopProducts() {
-  const products = await getTopProducts(5)
+  const { data: products } = await tryQuery(() => getTopProducts(5), [])
 
   if (products.length === 0) {
     return (
