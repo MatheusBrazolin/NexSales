@@ -41,16 +41,17 @@ export function createOfflineSessionCookie(
   userId: string,
   email: string,
   role: string,
+  maxAgeSecs: number = MAX_AGE_SECONDS,
 ): { value: string; maxAge: number } {
   const payload: OfflineSessionPayload = {
     userId,
     email,
     role,
-    exp: Math.floor(Date.now() / 1000) + MAX_AGE_SECONDS,
+    exp: Math.floor(Date.now() / 1000) + maxAgeSecs,
   }
   const data = Buffer.from(JSON.stringify(payload)).toString('base64url')
   const sig = sign(data)
-  return { value: `${data}.${sig}`, maxAge: MAX_AGE_SECONDS }
+  return { value: `${data}.${sig}`, maxAge: maxAgeSecs }
 }
 
 /**

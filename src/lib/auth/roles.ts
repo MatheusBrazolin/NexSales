@@ -2,10 +2,11 @@ import 'server-only'
 import { cache } from 'react'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@/lib/supabase/server'
 import { displayName, initials } from '@/lib/utils/user-display'
 import { OFFLINE_COOKIE_NAME, readOfflineSession } from '@/lib/supabase/offline-cookie'
-import type { UserRole } from '@/types/database'
+import type { Database, UserRole } from '@/types/database'
 
 export interface CurrentUser {
   id: string
@@ -27,18 +28,54 @@ export interface CurrentUser {
  * in the same render hit Supabase only once.
  */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
-  const supabase = await createClient()
+  const cookieStore = await cookies()
 
-  const AUTH_TIMEOUT_MS = 5_000
-  const { data: { user } } = await Promise.race([
-    supabase.auth.getUser(),
-    new Promise<{ data: { user: null }; error: null }>((resolve) =>
-      setTimeout(() => resolve({ data: { user: null }, error: null }), AUTH_TIMEOUT_MS),
-    ),
-  ])
+  // AbortController gives us a hard 3s ceiling — avoids the hanging-promise
+  // accumulation that causes blank screens in Electron when the app is offline.
+  const AUTH_TIMEOUT_MS = 3_000
+  const controller = new AbortController()
+  const abortTimer = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS)
+
+  const supabaseWithTimeout = createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      global: {
+        fetch: (url: RequestInfo | URL, init?: RequestInit) =>
+          fetch(url, { ...init, signal: controller.signal }).finally(() =>
+            clearTimeout(abortTimer),
+          ),
+      },
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options),
+            )
+          } catch {
+            // Server Component context — cookies set by middleware
+          }
+        },
+      },
+    },
+  )
+
+  let user: Awaited<ReturnType<typeof supabaseWithTimeout.auth.getUser>>['data']['user'] = null
+  try {
+    const { data } = await supabaseWithTimeout.auth.getUser()
+    user = data.user
+  } catch {
+    // AbortError (timeout) or network failure — fall through to offline cookie
+  } finally {
+    clearTimeout(abortTimer)
+  }
 
   if (user) {
-    // Fetch role + profile in parallel — both are tiny single-row lookups.
+    // Fetch role + profile in parallel using the regular client (already online if we got here).
+    const supabase = await createClient()
     const [{ data: roleRow }, { data: profileRow }] = await Promise.all([
       supabase.from('user_roles').select('role').eq('user_id', user.id).maybeSingle(),
       supabase
@@ -64,9 +101,9 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     }
   }
 
-  // No live Supabase session — check for an offline session cookie (set after
-  // an offline login). This lets server components work while the app is offline.
-  const cookieStore = await cookies()
+  // No live Supabase session — check for an offline session cookie.
+  // Set after an offline login OR after every successful online login,
+  // so the app keeps working when the connection drops mid-session.
   const offlineCookie = cookieStore.get(OFFLINE_COOKIE_NAME)
   if (offlineCookie) {
     const session = readOfflineSession(offlineCookie.value)

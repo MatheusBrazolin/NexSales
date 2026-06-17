@@ -93,7 +93,8 @@ export async function signIn(usernameOrEmail: string, password: string) {
     return { error: 'Usuário ou senha inválidos.' }
   }
 
-  // Online login succeeded — persist credentials for future offline logins
+  // Online login succeeded — persist credentials and set offline session cookie so the
+  // app keeps working if the connection drops before the next Supabase token refresh.
   if (data.user) {
     try {
       const { data: roleRow } = await supabase
@@ -102,7 +103,20 @@ export async function signIn(usernameOrEmail: string, password: string) {
         .eq('user_id', data.user.id)
         .maybeSingle()
 
-      saveOfflineCredentials(email, password, data.user.id, roleRow?.role ?? 'employee')
+      const role = roleRow?.role ?? 'employee'
+      saveOfflineCredentials(email, password, data.user.id, role)
+
+      // 7 days — refreshed on every online login so the user can navigate offline
+      // without being kicked to /login just because supabase.auth.getUser() times out.
+      const ONLINE_OFFLINE_TTL = 7 * 24 * 60 * 60
+      const session = createOfflineSessionCookie(data.user.id, email, role, ONLINE_OFFLINE_TTL)
+      const cookieStore = await cookies()
+      cookieStore.set(OFFLINE_COOKIE_NAME, session.value, {
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: session.maxAge,
+        path: '/',
+      })
     } catch {
       // Non-critical: never let caching break a successful login
     }
