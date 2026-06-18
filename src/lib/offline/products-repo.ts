@@ -34,6 +34,7 @@ export async function searchProducts(
     .filter(
       (p) =>
         p.is_active &&
+        p.stock_quantity > 0 &&
         (p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q)),
     )
     .limit(limit)
