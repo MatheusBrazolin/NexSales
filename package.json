@@ -81,11 +81,15 @@
     "files": [
       "electron/**/*",
       ".next/**/*",
+      "!.next/dev/**/*",
+      "!.next/cache/**/*",
+      "!.next/turbopack/**/*",
       "public/**/*",
       "package.json",
       "next.config.ts",
       "tsconfig.json",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "!node_modules/.cache/**/*"
     ],
     "asar": false,
     "win": {
