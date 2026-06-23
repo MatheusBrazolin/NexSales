@@ -28,9 +28,24 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://vendas-app-topaz.vercel.app'),
   title: 'NexSales — Smart Sales Platform',
   description: 'Plataforma moderna de gestão de vendas, clientes e performance do seu negócio.',
   applicationName: 'NexSales',
+  keywords: ['PDV', 'ponto de venda', 'gestão de vendas', 'clientes', 'relatórios', 'NexSales'],
+  authors: [{ name: 'NexSales' }],
+  openGraph: {
+    type: 'website',
+    locale: 'pt_BR',
+    title: 'NexSales — Smart Sales Platform',
+    description: 'Plataforma moderna de gestão de vendas, clientes e performance do seu negócio.',
+    siteName: 'NexSales',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'NexSales — Smart Sales Platform',
+    description: 'Plataforma moderna de gestão de vendas, clientes e performance do seu negócio.',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
