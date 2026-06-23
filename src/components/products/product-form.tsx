@@ -120,12 +120,14 @@ export function ProductForm({ product, categories, onSubmit }: ProductFormProps)
           stock_quantity: product.stock_quantity,
           min_stock: product.min_stock,
           category_id: product.category_id ?? '',
+          track_stock: product.track_stock,
         }
-      : { stock_quantity: 0, min_stock: 0, cost_price: 0, sale_price: 0 },
+      : { stock_quantity: 0, min_stock: 0, cost_price: 0, sale_price: 0, track_stock: true },
   })
 
   const watchedSalePrice = useWatch({ control, name: 'sale_price' })
   const watchedCostPrice = useWatch({ control, name: 'cost_price' })
+  const trackStock = useWatch({ control, name: 'track_stock' }) as boolean
 
   const saleNum = Number(watchedSalePrice) || 0
   const costNum = Number(watchedCostPrice) || 0
@@ -402,45 +404,72 @@ export function ProductForm({ product, categories, onSubmit }: ProductFormProps)
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="stock_quantity" className="text-xs font-medium text-slate-700">
-                Estoque Atual <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="stock_quantity"
-                type="number"
-                min="0"
-                placeholder="0"
-                required
-                aria-invalid={!!errors.stock_quantity}
-                className="h-10 border-slate-200"
-                {...register('stock_quantity')}
-              />
-              {errors.stock_quantity && (
-                <p className="text-red-500 text-xs">{errors.stock_quantity.message}</p>
-              )}
+          {/* ── Stock control toggle ── */}
+          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/60 px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-slate-700">Controlar estoque</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Quando desativado, não limita nem desconta estoque nas vendas
+              </p>
             </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="min_stock" className="text-xs font-medium text-slate-700">
-                Estoque Mínimo <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="min_stock"
-                type="number"
-                min="0"
-                placeholder="0"
-                required
-                aria-invalid={!!errors.min_stock}
-                className="h-10 border-slate-200"
-                {...register('min_stock')}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={trackStock ?? true}
+              onClick={() => setValue('track_stock', !(trackStock ?? true))}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                (trackStock ?? true) ? 'bg-primary' : 'bg-slate-300'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm ring-0 transition-transform ${
+                  (trackStock ?? true) ? 'translate-x-5' : 'translate-x-0'
+                }`}
               />
-              {errors.min_stock && (
-                <p className="text-red-500 text-xs">{errors.min_stock.message}</p>
-              )}
-            </div>
+            </button>
           </div>
+
+          {(trackStock ?? true) && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="stock_quantity" className="text-xs font-medium text-slate-700">
+                  Estoque Atual <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="stock_quantity"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  required
+                  aria-invalid={!!errors.stock_quantity}
+                  className="h-10 border-slate-200"
+                  {...register('stock_quantity')}
+                />
+                {errors.stock_quantity && (
+                  <p className="text-red-500 text-xs">{errors.stock_quantity.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="min_stock" className="text-xs font-medium text-slate-700">
+                  Estoque Mínimo <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="min_stock"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  required
+                  aria-invalid={!!errors.min_stock}
+                  className="h-10 border-slate-200"
+                  {...register('min_stock')}
+                />
+                {errors.min_stock && (
+                  <p className="text-red-500 text-xs">{errors.min_stock.message}</p>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-slate-700">Categoria</Label>

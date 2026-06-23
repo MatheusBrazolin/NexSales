@@ -24,6 +24,7 @@ interface RawSaleItemRow {
   quantity: number
   unit_price: number
   subtotal: number
+  item_description: string | null
   prod_id: string
   code: string
   prod_name: string
@@ -34,6 +35,7 @@ interface RawSaleItemRow {
   min_stock: number
   category_id: string | null
   is_active: number
+  track_stock: number
   prod_created_at: string
   prod_updated_at: string
 }
@@ -94,9 +96,11 @@ export function getSaleById(id: string): SaleWithItems | null {
     .prepare(
       `SELECT
         si.id, si.sale_id, si.product_id, si.quantity, si.unit_price, si.subtotal,
+        si.item_description,
         p.id AS prod_id, p.code, p.name AS prod_name, p.description,
         p.sale_price, p.cost_price, p.stock_quantity, p.min_stock,
-        p.category_id, p.is_active, p.created_at AS prod_created_at, p.updated_at AS prod_updated_at
+        p.category_id, p.is_active, p.track_stock,
+        p.created_at AS prod_created_at, p.updated_at AS prod_updated_at
        FROM sale_items si
        JOIN products p ON p.id = si.product_id
        WHERE si.sale_id = ?`,
@@ -119,6 +123,7 @@ export function getSaleById(id: string): SaleWithItems | null {
       quantity: item.quantity,
       unit_price: item.unit_price,
       subtotal: item.subtotal,
+      item_description: item.item_description,
       products: {
         id: item.prod_id,
         code: item.code,
@@ -130,6 +135,7 @@ export function getSaleById(id: string): SaleWithItems | null {
         min_stock: item.min_stock,
         category_id: item.category_id,
         is_active: item.is_active === 1,
+        track_stock: item.track_stock === 1,
         created_at: item.prod_created_at,
         updated_at: item.prod_updated_at,
       } as Product,

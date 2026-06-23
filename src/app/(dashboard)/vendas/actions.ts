@@ -11,6 +11,7 @@ interface SaleItem {
   product_id: string
   quantity: number
   unit_price?: number
+  item_description?: string
 }
 
 interface CreateSaleInput {

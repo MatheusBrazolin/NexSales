@@ -32,6 +32,7 @@ export interface PendingSaleItem {
   quantity: number
   name: string
   unit_price: number
+  item_description?: string
 }
 
 /**

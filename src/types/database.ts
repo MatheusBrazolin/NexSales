@@ -37,6 +37,7 @@ export interface Database {
           min_stock: number
           category_id: string | null
           is_active: boolean
+          track_stock: boolean
           created_at: string
           updated_at: string
         }
@@ -51,6 +52,7 @@ export interface Database {
           min_stock?: number
           category_id?: string | null
           is_active?: boolean
+          track_stock?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -65,6 +67,7 @@ export interface Database {
           min_stock?: number
           category_id?: string | null
           is_active?: boolean
+          track_stock?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -189,6 +192,7 @@ export interface Database {
           quantity: number
           unit_price: number
           subtotal: number
+          item_description: string | null
         }
         Insert: {
           id?: string
@@ -197,6 +201,7 @@ export interface Database {
           quantity: number
           unit_price: number
           subtotal: number
+          item_description?: string | null
         }
         Update: {
           id?: string
@@ -205,6 +210,7 @@ export interface Database {
           quantity?: number
           unit_price?: number
           subtotal?: number
+          item_description?: string | null
         }
         Relationships: [
           {
@@ -428,4 +434,5 @@ export type CartItem = {
   product: Product
   quantity: number
   customPrice?: number
+  itemDescription?: string
 }

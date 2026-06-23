@@ -17,6 +17,7 @@ import {
   UserRound,
   UserPlus,
   Phone,
+  Tag,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -38,7 +39,7 @@ import { searchCustomersOffline } from '@/lib/offline/customers-repo'
 import { queueSale } from '@/lib/offline/sales-repo'
 import { formatCurrency } from '@/lib/utils/format'
 import { printReceipt } from '@/lib/utils/print-receipt'
-import type { CartItem, CustomerBalance, PaymentMethod } from '@/types/database'
+import type { CartItem, CustomerBalance, PaymentMethod, Product } from '@/types/database'
 
 /** Snapshot of a sale saved offline, for the provisional confirmation banner. */
 interface OfflineSaleConfirmation {
@@ -55,7 +56,11 @@ const PAYMENT_OPTIONS: { value: PaymentMethod; label: string }[] = [
   { value: 'fiado', label: 'Fiado' },
 ]
 
-export function PDV() {
+interface PDVProps {
+  avulsoProduct?: Product | null
+}
+
+export function PDV({ avulsoProduct }: PDVProps) {
   const router = useRouter()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('')
@@ -96,15 +101,27 @@ export function PDV() {
     setCartItems((prev) => {
       const existing = prev.find((i) => i.product.id === item.product.id)
       if (existing) {
-        const maxQty = existing.product.stock_quantity
+        if (existing.product.track_stock) {
+          return prev.map((i) =>
+            i.product.id === item.product.id
+              ? { ...i, quantity: Math.min(i.quantity + 1, existing.product.stock_quantity) }
+              : i
+          )
+        }
         return prev.map((i) =>
-          i.product.id === item.product.id
-            ? { ...i, quantity: Math.min(i.quantity + 1, maxQty) }
-            : i
+          i.product.id === item.product.id ? { ...i, quantity: i.quantity + 1 } : i
         )
       }
       return [...prev, item]
     })
+  }
+
+  function handleUpdateDescription(productId: string, desc: string) {
+    setCartItems((prev) =>
+      prev.map((item) =>
+        item.product.id === productId ? { ...item, itemDescription: desc } : item
+      )
+    )
   }
 
   function handleUpdateQty(productId: string, qty: number) {
@@ -205,6 +222,14 @@ export function PDV() {
       return
     }
 
+    const avulsoWithoutPrice = cartItems.some(
+      (item) => !item.product.track_stock && !(item.customPrice && item.customPrice > 0)
+    )
+    if (avulsoWithoutPrice) {
+      toast.error('Defina o valor dos itens avulsos antes de finalizar')
+      return
+    }
+
     setIsSubmitting(true)
 
     const clientUuid = crypto.randomUUID()
@@ -212,6 +237,7 @@ export function PDV() {
       product_id: item.product.id,
       quantity: item.quantity,
       ...(item.customPrice !== undefined ? { unit_price: item.customPrice } : {}),
+      ...(item.itemDescription ? { item_description: item.itemDescription } : {}),
     }))
 
     try {
@@ -258,6 +284,7 @@ export function PDV() {
           quantity: item.quantity,
           name: item.product.name,
           unit_price: item.customPrice ?? item.product.sale_price,
+          ...(item.itemDescription ? { item_description: item.itemDescription } : {}),
         })),
       })
     } catch {
@@ -306,6 +333,11 @@ export function PDV() {
     setShowNewCustomerForm(false)
     setNewCustomerName('')
     setNewCustomerPhone('')
+  }
+
+  function handleAddAvulso() {
+    if (!avulsoProduct) return
+    handleAddItem({ product: avulsoProduct, quantity: 1, customPrice: 0 })
   }
 
   const canSubmit = !isSubmitting && cartItems.length > 0
@@ -366,8 +398,20 @@ export function PDV() {
                 Buscar produto
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <ProductSearch onAdd={handleAddItem} />
+              {avulsoProduct && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-dashed border-slate-300 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:border-slate-400 transition-colors"
+                  onClick={handleAddAvulso}
+                >
+                  <Tag className="h-3.5 w-3.5 mr-1.5" />
+                  Item Avulso
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -386,6 +430,7 @@ export function PDV() {
                 items={cartItems}
                 onUpdateQty={handleUpdateQty}
                 onUpdatePrice={handleUpdatePrice}
+                onUpdateDescription={handleUpdateDescription}
                 onRemove={handleRemove}
               />
             </CardContent>

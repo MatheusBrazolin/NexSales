@@ -64,7 +64,7 @@ describe('getProductsPaged — Electron path', () => {
     const fakeProduct = {
       id: 'p-1', name: 'Café 500g', code: '001',
       sale_price: 12, cost_price: 6, stock_quantity: 30, min_stock: 5,
-      is_active: true, category_id: null, description: null, categories: null,
+      is_active: true, track_stock: true, category_id: null, description: null, categories: null,
       created_at: '', updated_at: '',
     } satisfies ProductWithCategory
     sqliteGetProductsPaged.mockResolvedValue({

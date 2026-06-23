@@ -122,6 +122,7 @@ export async function flushPendingSales(): Promise<{ synced: number; failed: num
           product_id: i.product_id,
           quantity: i.quantity,
           unit_price: i.unit_price,
+          ...(i.item_description ? { item_description: i.item_description } : {}),
         })),
         client_uuid: sale.id,
         customer_id: sale.customer_id ?? null,

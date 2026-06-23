@@ -11,10 +11,11 @@ interface CartProps {
   items: CartItem[]
   onUpdateQty: (productId: string, qty: number) => void
   onUpdatePrice: (productId: string, price: number) => void
+  onUpdateDescription: (productId: string, desc: string) => void
   onRemove: (productId: string) => void
 }
 
-export function Cart({ items, onUpdateQty, onUpdatePrice, onRemove }: CartProps) {
+export function Cart({ items, onUpdateQty, onUpdatePrice, onUpdateDescription, onRemove }: CartProps) {
   const total = items.reduce(
     (sum, item) => sum + (item.customPrice ?? item.product.sale_price) * item.quantity,
     0,
@@ -65,6 +66,16 @@ export function Cart({ items, onUpdateQty, onUpdatePrice, onRemove }: CartProps)
           >
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate text-slate-900 dark:text-slate-100">{item.product.name}</p>
+
+              {!item.product.track_stock && (
+                <input
+                  type="text"
+                  placeholder="Descrição do item..."
+                  value={item.itemDescription ?? ''}
+                  onChange={(e) => onUpdateDescription(item.product.id, e.target.value)}
+                  className="mt-1 mb-0.5 w-full text-xs h-6 px-2 rounded border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-primary/60"
+                />
+              )}
 
               <div className="flex items-center gap-1 mt-0.5">
                 {isEditing ? (
@@ -149,7 +160,7 @@ export function Cart({ items, onUpdateQty, onUpdatePrice, onRemove }: CartProps)
                 size="icon"
                 className="h-10 w-10 sm:h-9 sm:w-9"
                 onClick={() => onUpdateQty(item.product.id, item.quantity + 1)}
-                disabled={item.quantity >= item.product.stock_quantity}
+                disabled={item.product.track_stock && item.quantity >= item.product.stock_quantity}
               >
                 <Plus className="h-4 w-4" />
               </Button>
