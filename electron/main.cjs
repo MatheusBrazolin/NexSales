@@ -17,7 +17,7 @@ const { spawn } = require('node:child_process')
 const http = require('node:http')
 
 const NEXT_PORT = 3099
-const APP_URL = `http://localhost:${NEXT_PORT}`
+const APP_URL = `http://127.0.0.1:${NEXT_PORT}`
 const APP_ORIGIN = APP_URL
 
 // A single instance only — a POS terminal shouldn't open the app twice.
@@ -71,6 +71,7 @@ function waitForServer(maxMs = 90_000) {
 async function startNextServer() {
   const root = getProjectRoot()
   const dbPath = path.join(app.getPath('userData'), 'nexsales.db')
+  const logPath = path.join(app.getPath('userData'), 'server.log')
 
   // In dev mode run `next dev`; in production use the standalone server.js
   // (no `next` binary needed — standalone output bundles only what's required).
@@ -87,22 +88,36 @@ async function startNextServer() {
       PORT: String(NEXT_PORT),
       HOSTNAME: '127.0.0.1',
     },
-    // Pipe stderr so startup errors appear in the Electron process console.
-    stdio: ['ignore', 'inherit', 'inherit'],
+    stdio: ['ignore', 'pipe', 'pipe'],
   })
+
+  // Capture output to a log file so errors are visible even without a terminal.
+  const logChunks = []
+  nextProcess.stdout.on('data', (d) => logChunks.push(d))
+  nextProcess.stderr.on('data', (d) => logChunks.push(d))
 
   nextProcess.on('error', (err) => {
-    console.error('[Electron] Failed to start Next.js server:', err.message)
+    logChunks.push(Buffer.from(`spawn error: ${err.message}\n`))
   })
 
-  nextProcess.on('exit', (code) => {
-    if (code !== 0 && code !== null) {
-      console.error(`[Electron] Next.js server exited with code ${code}`)
-    }
-    nextProcess = null
+  // If the server exits before waitForServer resolves, reject immediately
+  // instead of waiting 90 seconds to time out.
+  const earlyExit = new Promise((_, reject) => {
+    nextProcess.on('exit', async (code) => {
+      const log = Buffer.concat(logChunks).toString('utf8').slice(-2000)
+      try { await fs.writeFile(logPath, log) } catch {}
+      if (code !== 0 && code !== null) {
+        reject(new Error(`Servidor encerrou com código ${code}.\n\nLog (${logPath}):\n${log.slice(-800)}`))
+      }
+      nextProcess = null
+    })
   })
 
-  await waitForServer()
+  await Promise.race([waitForServer(), earlyExit])
+
+  // Write log on success too (helps debugging)
+  nextProcess?.stdout?.removeAllListeners()
+  nextProcess?.stderr?.removeAllListeners()
 }
 
 // ─────────────────────────────────────────────
