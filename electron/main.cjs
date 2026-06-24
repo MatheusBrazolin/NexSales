@@ -12,8 +12,10 @@
 
 const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron')
 const fs = require('node:fs/promises')
+const fss = require('node:fs')
 const path = require('node:path')
 const { spawn } = require('node:child_process')
+const { randomBytes } = require('node:crypto')
 const http = require('node:http')
 
 const NEXT_PORT = 3099
@@ -34,6 +36,22 @@ let nextProcess = null
 // ─────────────────────────────────────────────
 //  Next.js server management
 // ─────────────────────────────────────────────
+
+/**
+ * Generates a random HMAC signing secret on first launch and persists it in
+ * userData so it survives app updates. Passed to the server process as
+ * OFFLINE_SESSION_SECRET so offline session cookies can be signed/verified.
+ */
+function getOrCreateOfflineSecret(userData) {
+  const secretFile = path.join(userData, '.nexsales-secret')
+  try {
+    const existing = fss.readFileSync(secretFile, 'utf8').trim()
+    if (existing.length >= 32) return existing
+  } catch {}
+  const secret = randomBytes(32).toString('hex')
+  try { fss.writeFileSync(secretFile, secret, { encoding: 'utf8', mode: 0o600 }) } catch {}
+  return secret
+}
 
 function getProjectRoot() {
   // app.isPackaged is true when running from an installed .exe
@@ -87,6 +105,7 @@ async function startNextServer() {
       DB_PATH: dbPath,
       PORT: String(NEXT_PORT),
       HOSTNAME: '127.0.0.1',
+      OFFLINE_SESSION_SECRET: getOrCreateOfflineSecret(app.getPath('userData')),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })

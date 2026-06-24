@@ -109,6 +109,8 @@ export async function signIn(usernameOrEmail: string, password: string) {
 
   // Online login succeeded — persist credentials and set offline session cookie so the
   // app keeps working if the connection drops before the next Supabase token refresh.
+  let redirectPath: string | null = null
+
   if (data.user) {
     try {
       const { data: roleRow } = await supabase
@@ -118,6 +120,7 @@ export async function signIn(usernameOrEmail: string, password: string) {
         .maybeSingle()
 
       const role = roleRow?.role ?? 'employee'
+      redirectPath = role === 'admin' ? '/dashboard' : '/vendas/nova'
       saveOfflineCredentials(email, password, data.user.id, role)
 
       // 7 days — refreshed on every online login so the user can navigate offline
@@ -137,7 +140,9 @@ export async function signIn(usernameOrEmail: string, password: string) {
   }
 
   revalidatePath('/', 'layout')
-  redirect(await postLoginPath())
+  // Use the role already fetched above to avoid a second round-trip to Supabase.
+  // Falls back to postLoginPath() only if the role query above failed.
+  redirect(redirectPath ?? (await postLoginPath()))
 }
 
 export async function signOut() {

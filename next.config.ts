@@ -3,6 +3,13 @@ import type { NextConfig } from 'next'
 const nextConfig: NextConfig = {
   output: 'standalone',
   serverExternalPackages: ['better-sqlite3'],
+  // Bake the public Supabase vars into every bundle (server, middleware, edge).
+  // Without this, process.env.NEXT_PUBLIC_* is undefined in the standalone server
+  // env because the Electron process doesn't inherit .env.local at runtime.
+  env: {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+  },
   async headers() {
     return [
       {
