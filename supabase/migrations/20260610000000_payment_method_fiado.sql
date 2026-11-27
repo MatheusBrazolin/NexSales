@@ -1,0 +1,27 @@
+-- ============================================================
+-- Valor 'fiado' no enum de forma de pagamento
+-- ============================================================
+--
+-- Este arquivo existe por um motivo so: o Postgres NAO deixa usar um valor
+-- de enum recem-adicionado na mesma transacao em que ele foi criado.
+--
+--   ERROR: unsafe use of new value "fiado" of enum type payment_method
+--   HINT:  New enum values must be committed before they can be used.
+--
+-- O 20260611000000_fiado.sql adicionava o valor e, 180 linhas depois, o
+-- usava na view customer_balances. Aplicado a mao pelo painel isso passa,
+-- porque cada bloco colado vira uma transacao separada. Pelo CLI, cada
+-- arquivo roda inteiro numa transacao so — e quebra.
+--
+-- O efeito pratico do bug era este: o banco da Lojinha NAO podia ser
+-- reconstruido a partir do repositorio. Para recriar a loja, montar um
+-- ambiente de teste ou recuperar de um desastre, a replay parava aqui.
+--
+-- Separando o ALTER TYPE no seu proprio arquivo, ele faz commit antes do
+-- proximo comecar, e o valor ja existe quando a view o referencia.
+--
+-- IF NOT EXISTS mantem o arquivo idempotente: em producao o valor ja esta
+-- la desde 11/06/2026, aplicado a mao.
+-- ============================================================
+
+alter type public.payment_method add value if not exists 'fiado';

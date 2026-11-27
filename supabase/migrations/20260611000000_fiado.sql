@@ -1,7 +1,9 @@
 -- ============ FIADO — crédito de loja ============
 
--- 1. Novo valor no enum de método de pagamento
-alter type public.payment_method add value 'fiado';
+-- 1. O valor 'fiado' no enum vem do 20260610000000_payment_method_fiado.sql.
+--    Ele PRECISA estar em arquivo separado: o Postgres não deixa usar um
+--    valor de enum novo na mesma transação em que ele foi criado, e a view
+--    customer_balances mais abaixo usa justamente esse valor.
 
 -- 2. Tabela de clientes (pré-cadastro simples)
 create table public.customers (

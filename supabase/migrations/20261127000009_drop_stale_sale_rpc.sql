@@ -1,0 +1,39 @@
+-- ============================================================
+-- Remove as versoes antigas de create_sale_with_items
+-- ============================================================
+--
+-- A funcao ganhou parametros duas vezes: p_customer_id (fiado, 11/06) e
+-- p_discount (desconto, 27/11). As duas vezes com `create or replace`.
+--
+-- Mas `create or replace function` NAO substitui uma funcao quando a lista
+-- de parametros muda: cria uma SOBRECARGA. O resultado e que o banco ficou
+-- com tres versoes vivas da mesma funcao:
+--
+--   create_sale_with_items(payment_method, text, jsonb, uuid)
+--   create_sale_with_items(payment_method, text, jsonb, uuid, uuid)
+--   create_sale_with_items(payment_method, text, jsonb, uuid, uuid, numeric)
+--
+-- POR QUE ISSO E PERIGOSO
+-- -----------------------
+-- Os parametros extras tem DEFAULT. Uma chamada que nao informe p_discount
+-- casa com as tres, e o Postgres recusa:
+--
+--   ERROR: function create_sale_with_items(...) is not unique
+--
+-- Hoje nao acontece porque existe uma unica chamada no projeto inteiro
+-- (src/app/(dashboard)/vendas/actions.ts) e ela passa os seis argumentos.
+-- Basta alguem escrever a proxima chamada sem o desconto para o caixa
+-- parar de vender.
+--
+-- Pior: as versoes antigas carregam a LOGICA antiga. A de quatro
+-- parametros ainda tem o bug do preco (NULLIF tratando preco 0 como nulo)
+-- e nenhuma das duas grava unit_cost. Se uma chamada caisse nelas, a venda
+-- seria registrada errada em silencio, sem erro nenhum.
+--
+-- Nao ha o que preservar: a versao de seis parametros faz tudo o que as
+-- outras faziam. As definicoes continuam no historico do git, caso algum
+-- dia seja preciso olhar.
+-- ============================================================
+
+drop function if exists public.create_sale_with_items(public.payment_method, text, jsonb, uuid);
+drop function if exists public.create_sale_with_items(public.payment_method, text, jsonb, uuid, uuid);
