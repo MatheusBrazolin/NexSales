@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { WifiOff } from 'lucide-react'
 import { spring, useMotionVariants } from '@/lib/motion'
+import { useOnlineStatus } from '@/hooks/use-online-status'
 
 /**
  * Small floating chip that appears in the bottom-right corner whenever the
@@ -16,26 +16,13 @@ import { spring, useMotionVariants } from '@/lib/motion'
  * though, and far cheaper than a periodic health ping.
  */
 export function OfflineIndicator() {
-  // Default to `true` to avoid a flash of the chip during SSR/hydration.
-  // The first effect tick corrects it from `navigator.onLine`.
-  const [online, setOnline] = useState(true)
+  // Assume online no servidor para a etiqueta não piscar na hidratação.
+  const online = useOnlineStatus()
   const chipVariants = useMotionVariants({
     hidden: { opacity: 0, y: 16, scale: 0.96 },
     visible: { opacity: 1, y: 0, scale: 1, transition: spring.soft },
     exit: { opacity: 0, y: 8, scale: 0.96, transition: { duration: 0.12 } },
   })
-
-  useEffect(() => {
-    setOnline(navigator.onLine)
-    const goOnline = () => setOnline(true)
-    const goOffline = () => setOnline(false)
-    window.addEventListener('online', goOnline)
-    window.addEventListener('offline', goOffline)
-    return () => {
-      window.removeEventListener('online', goOnline)
-      window.removeEventListener('offline', goOffline)
-    }
-  }, [])
 
   return (
     <AnimatePresence>

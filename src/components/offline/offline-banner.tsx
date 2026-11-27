@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { WifiOff, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useOnlineStatus } from '@/hooks/use-online-status'
 
 interface OfflineBannerProps {
   message?: string
@@ -12,21 +12,12 @@ export function OfflineBanner({
   message = 'Você está offline. Dados podem estar desatualizados.',
 }: OfflineBannerProps) {
   const router = useRouter()
-  // Start as false to match the server render (server can't read navigator.onLine).
-  // useEffect syncs to the real value after hydration, avoiding the mismatch.
-  const [isOnline, setIsOnline] = useState(false)
-
-  useEffect(() => {
-    setIsOnline(navigator.onLine)
-    const handleOnline = () => setIsOnline(true)
-    const handleOffline = () => setIsOnline(false)
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
+  // `noServidor: false` mantém o comportamento de antes: o servidor não
+  // consegue ler navigator.onLine, e esta tarja só é renderizada quando a
+  // consulta do servidor JÁ falhou — então assumir offline no primeiro
+  // instante é o palpite certo. Corrige para azul em milissegundos se o
+  // navegador estiver online.
+  const isOnline = useOnlineStatus({ noServidor: false })
 
   if (isOnline) {
     return (
