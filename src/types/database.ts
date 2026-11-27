@@ -358,8 +358,10 @@ export interface Database {
         Returns: {
           today_total: number
           today_count: number
+          yesterday_total: number
           month_total: number
           month_count: number
+          last_month_total: number
           avg_ticket: number
           low_stock_count: number
         }[]

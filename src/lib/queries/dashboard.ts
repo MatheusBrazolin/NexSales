@@ -30,7 +30,9 @@ export async function getDashboardMetrics() {
 
   return {
     todayTotal: Number(row?.today_total ?? 0),
+    yesterdayTotal: Number(row?.yesterday_total ?? 0),
     monthTotal: Number(row?.month_total ?? 0),
+    lastMonthTotal: Number(row?.last_month_total ?? 0),
     todayCount: Number(row?.today_count ?? 0),
     monthCount: Number(row?.month_count ?? 0),
     avgTicket: Number(row?.avg_ticket ?? 0),

@@ -13,17 +13,20 @@ import {
 } from 'lucide-react'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { formatCurrency } from '@/lib/utils/format'
+import { compareToPrevious, type TrendDirection } from '@/lib/utils/trend'
 
 interface KpiCardsProps {
   todayTotal: number
+  /** Same metric for yesterday, so the badge can compare for real. */
+  yesterdayTotal: number
   monthTotal: number
+  /** Last month up to the same point in the month, not the whole month. */
+  lastMonthTotal: number
   avgTicket: number
   lowStockCount: number
   todayCount: number
   monthCount: number
 }
-
-type Trend = 'up' | 'down' | 'flat'
 
 interface KpiCard {
   title: string
@@ -35,11 +38,11 @@ interface KpiCard {
   iconColor: string
   iconBg: string
   accentColor: string
-  trend: Trend
+  trend: TrendDirection
   trendLabel: string
 }
 
-function TrendBadge({ trend, label }: { trend: Trend; label: string }) {
+function TrendBadge({ trend, label }: { trend: TrendDirection; label: string }) {
   const config = {
     up: {
       Icon: ArrowUp,
@@ -58,22 +61,30 @@ function TrendBadge({ trend, label }: { trend: Trend; label: string }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap shrink-0 ${className}`}
+      // Sem nowrap: os rótulos reais ("sem movimento vs mês anterior") são
+      // mais longos que os literais que estavam aqui antes, e truncar um
+      // comparativo pela metade é pior do que deixá-lo ocupar duas linhas.
+      className={`inline-flex items-start gap-1 self-start rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-snug ${className}`}
     >
-      <Icon className="h-3 w-3" />
-      {label}
+      <Icon className="h-3 w-3 shrink-0 mt-0.5" />
+      <span>{label}</span>
     </span>
   )
 }
 
 export function KpiCards({
   todayTotal,
+  yesterdayTotal,
   monthTotal,
+  lastMonthTotal,
   avgTicket,
   lowStockCount,
   todayCount,
   monthCount,
 }: KpiCardsProps) {
+  const todayTrend = compareToPrevious(todayTotal, yesterdayTotal, 'vs ontem')
+  const monthTrend = compareToPrevious(monthTotal, lastMonthTotal, 'vs mês anterior')
+
   const cards: KpiCard[] = [
     {
       title: 'Vendas Hoje',
@@ -84,8 +95,8 @@ export function KpiCards({
       iconColor: 'text-violet-600 dark:text-violet-400',
       iconBg: 'bg-violet-50 dark:bg-violet-500/10',
       accentColor: '#7c3aed',
-      trend: 'up',
-      trendLabel: '+12% vs ontem',
+      trend: todayTrend.direction,
+      trendLabel: todayTrend.label,
     },
     {
       title: 'Vendas no Mês',
@@ -96,8 +107,8 @@ export function KpiCards({
       iconColor: 'text-emerald-600 dark:text-emerald-400',
       iconBg: 'bg-emerald-50 dark:bg-emerald-500/10',
       accentColor: '#059669',
-      trend: 'up',
-      trendLabel: '+8% vs mês anterior',
+      trend: monthTrend.direction,
+      trendLabel: monthTrend.label,
     },
     {
       title: 'Ticket Médio',
@@ -108,8 +119,10 @@ export function KpiCards({
       iconColor: 'text-cyan-600 dark:text-cyan-400',
       iconBg: 'bg-cyan-50 dark:bg-cyan-500/10',
       accentColor: '#0891b2',
+      // O ticket médio não tem comparativo próprio guardado; em vez de
+      // inventar um, o selo apenas descreve o que o número é.
       trend: 'flat',
-      trendLabel: 'estável',
+      trendLabel: 'no mês',
     },
     {
       title: 'Estoque Baixo',
@@ -165,9 +178,11 @@ export function KpiCards({
                 format={card.formatValue}
                 className="block text-[28px] font-bold text-slate-900 dark:text-slate-50 leading-none tabular-nums mb-4"
               />
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-1.5">
                 <TrendBadge trend={card.trend} label={card.trendLabel} />
-                <span className="text-xs text-slate-400 dark:text-slate-500 truncate">{card.sub}</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                  {card.sub}
+                </span>
               </div>
             </div>
           </motion.div>

@@ -53,6 +53,36 @@ export function getDashboardMetrics() {
 
   const todayTotal = todaySales.reduce((s, r) => s + r.total_amount, 0)
   const monthTotal = monthSales.reduce((s, r) => s + r.total_amount, 0)
+
+  // Comparativos: mesmas janelas que a RPC do Postgres usa, para o selo de
+  // tendência dizer a mesma coisa no desktop e na web.
+  const yesterday = brDayRangeUTC(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date(Date.now() - 24 * 60 * 60 * 1000)),
+  )
+  const yesterdayTotal = (
+    db
+      .prepare(`SELECT total_amount FROM sales WHERE created_at >= ? AND created_at <= ?`)
+      .all(yesterday.start, yesterday.end) as Pick<SaleRow, 'total_amount'>[]
+  ).reduce((s, r) => s + r.total_amount, 0)
+
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
+  const lastMonthSamePoint = new Date(
+    now.getFullYear(),
+    now.getMonth() - 1,
+    now.getDate(),
+    now.getHours(),
+    now.getMinutes(),
+  ).toISOString()
+  const lastMonthTotal = (
+    db
+      .prepare(`SELECT total_amount FROM sales WHERE created_at >= ? AND created_at < ?`)
+      .all(lastMonthStart, lastMonthSamePoint) as Pick<SaleRow, 'total_amount'>[]
+  ).reduce((s, r) => s + r.total_amount, 0)
   const todayCount = todaySales.length
   const monthCount = monthSales.length
   const avgTicket = monthCount > 0 ? monthTotal / monthCount : 0
@@ -65,6 +95,8 @@ export function getDashboardMetrics() {
     monthCount,
     avgTicket,
     lowStockCount,
+    yesterdayTotal,
+    lastMonthTotal,
     recentSales: recentSales as unknown as Sale[],
   }
 }
