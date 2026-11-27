@@ -107,7 +107,9 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
   function confirmStaged() {
     if (!staged) return
     const { product, quantity } = staged
-    if (quantity > product.stock_quantity) {
+    // Produto sem controle de estoque (o "Item Avulso") vive em 0 por
+    // definição: checar quantidade contra 0 impediria de vendê-lo.
+    if (product.track_stock && quantity > product.stock_quantity) {
       toast.error(`Estoque insuficiente. Disponível: ${product.stock_quantity}`)
       return
     }
@@ -122,7 +124,8 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
 
   function setStagedQty(value: number) {
     if (!staged) return
-    const clamped = Math.max(1, Math.min(staged.product.stock_quantity, Math.floor(value) || 1))
+    const max = staged.product.track_stock ? staged.product.stock_quantity : Infinity
+    const clamped = Math.max(1, Math.min(max, Math.floor(value) || 1))
     setStaged((prev) => prev ? { ...prev, quantity: clamped } : null)
   }
 
@@ -146,7 +149,7 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
       searchRef.current?.select()
       return
     }
-    if (product.stock_quantity <= 0) {
+    if (product.track_stock && product.stock_quantity <= 0) {
       toast.error(`Sem estoque: ${product.name}`)
       searchRef.current?.select()
       return
@@ -254,7 +257,11 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
             <div className="min-w-0">
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{staged.product.name}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Cód: {staged.product.code} · Estoque: {staged.product.stock_quantity} ·{' '}
+                Cód: {staged.product.code} ·{' '}
+                {staged.product.track_stock
+                  ? `Estoque: ${staged.product.stock_quantity}`
+                  : 'Estoque livre'}{' '}
+                ·{' '}
                 {formatCurrency(staged.product.sale_price)}
               </p>
             </div>
@@ -285,7 +292,7 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
                 ref={stagedQtyRef}
                 type="number"
                 min={1}
-                max={staged.product.stock_quantity}
+                max={staged.product.track_stock ? staged.product.stock_quantity : undefined}
                 value={staged.quantity}
                 onChange={(e) => setStagedQty(parseInt(e.target.value, 10) || 1)}
                 onFocus={(e) => e.currentTarget.select()}
@@ -296,7 +303,10 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
               <button
                 type="button"
                 onClick={() => setStagedQty(staged.quantity + 1)}
-                disabled={staged.quantity >= staged.product.stock_quantity}
+                disabled={
+                  staged.product.track_stock &&
+                  staged.quantity >= staged.product.stock_quantity
+                }
                 className="h-9 w-9 inline-flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/8 disabled:opacity-40 transition-colors"
                 aria-label="Aumentar"
               >
@@ -373,14 +383,18 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
                   <p className={`text-sm font-medium truncate ${index === highlightedIndex ? 'text-primary/80 dark:text-primary' : 'text-slate-900 dark:text-slate-100'}`}>
                     {product.name}
                   </p>
-                  {product.stock_quantity <= 0 && (
+                  {product.track_stock && product.stock_quantity <= 0 && (
                     <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400">
                       Sem estoque
                     </span>
                   )}
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Cód: {product.code} · Estoque: {product.stock_quantity} ·{' '}
+                  Cód: {product.code} ·{' '}
+                  {product.track_stock
+                    ? `Estoque: ${product.stock_quantity}`
+                    : 'Estoque livre'}{' '}
+                  ·{' '}
                   {formatCurrency(product.sale_price)}
                 </p>
               </div>
