@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils/format'
 import { useDebounce } from '@/hooks/use-debounce'
 import { slideInLeft, spring, staggerContainer, useMotionVariants } from '@/lib/motion'
+import { FOCUS_SEARCH_EVENT } from '@/hooks/use-pdv-shortcuts'
 import {
   searchProducts,
   getByCode,
@@ -48,6 +49,17 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
   useEffect(() => {
     searchRef.current?.focus()
     void ensureProductsCached()
+  }, [])
+
+  // F2 anywhere on the page brings the operator back here.
+  useEffect(() => {
+    function focusSearch() {
+      setStaged(null)
+      searchRef.current?.focus()
+      searchRef.current?.select()
+    }
+    window.addEventListener(FOCUS_SEARCH_EVENT, focusSearch)
+    return () => window.removeEventListener(FOCUS_SEARCH_EVENT, focusSearch)
   }, [])
 
   // Reset highlight whenever results change.

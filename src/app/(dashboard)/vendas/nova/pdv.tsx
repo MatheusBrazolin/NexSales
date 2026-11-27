@@ -42,6 +42,7 @@ import { AnimatedNumber } from '@/components/ui/animated-number'
 import { formatCurrency } from '@/lib/utils/format'
 import { printReceipt } from '@/lib/utils/print-receipt'
 import { fadeUp, spring, useMotionVariants, usePrefersReducedMotion } from '@/lib/motion'
+import { usePdvShortcuts, FOCUS_SEARCH_EVENT } from '@/hooks/use-pdv-shortcuts'
 import type { CartItem, CustomerBalance, PaymentMethod, Product } from '@/types/database'
 
 /** Snapshot of a sale saved offline, for the provisional confirmation banner. */
@@ -384,6 +385,23 @@ export function PDV({ avulsoProduct }: PDVProps) {
   }
 
   const canSubmit = !isSubmitting && cartItems.length > 0
+
+  usePdvShortcuts(
+    {
+      onFocusSearch: () => window.dispatchEvent(new Event(FOCUS_SEARCH_EVENT)),
+      onSubmit: () => {
+        if (canSubmit) void handleSubmit()
+      },
+      onClearCart: () => {
+        if (cartItems.length === 0) return
+        resetForm()
+        toast.info('Carrinho limpo.')
+      },
+    },
+    // Disabled while the success overlay is up: the sale is already committed
+    // and a stray F4 would otherwise start a second one.
+    confirmedTotal === null,
+  )
 
   return (
     <div className="space-y-4 pb-24 lg:pb-0">
@@ -836,6 +854,7 @@ export function PDV({ avulsoProduct }: PDVProps) {
                 className="hidden lg:flex w-full h-12 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold text-base shadow-sm shadow-green-900/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 onClick={handleSubmit}
                 disabled={!canSubmit}
+                aria-busy={isSubmitting}
               >
                 {isSubmitting ? (
                   <>
@@ -855,6 +874,23 @@ export function PDV({ avulsoProduct }: PDVProps) {
                   Adicione produtos ao carrinho para finalizar.
                 </p>
               )}
+
+              {/* Discreet, but discoverable: an operator who never reads a
+                  manual will still pick these up after a few shifts. */}
+              <div className="hidden lg:flex items-center justify-center gap-3 text-[11px] text-slate-400 dark:text-slate-500">
+                <span>
+                  <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-700 dark:text-slate-300 font-mono text-[10px]">F2</kbd>{' '}
+                  buscar
+                </span>
+                <span>
+                  <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-700 dark:text-slate-300 font-mono text-[10px]">F4</kbd>{' '}
+                  finalizar
+                </span>
+                <span>
+                  <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-700 dark:text-slate-300 font-mono text-[10px]">F8</kbd>{' '}
+                  limpar
+                </span>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -878,6 +914,7 @@ export function PDV({ avulsoProduct }: PDVProps) {
               className="h-12 px-6 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold shadow-sm disabled:opacity-50 transition-colors"
               onClick={handleSubmit}
               disabled={!canSubmit}
+              aria-busy={isSubmitting}
             >
               {isSubmitting ? (
                 <>
