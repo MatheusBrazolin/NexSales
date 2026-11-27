@@ -4,8 +4,6 @@ import { CashCloseView } from '@/components/sales/cash-close-view'
 import { getCurrentUser } from '@/lib/auth/roles'
 import { tryQuery } from '@/lib/supabase/try-query'
 import { OfflineBanner } from '@/components/offline/offline-banner'
-import { CashDrawerPanel } from '@/components/sales/cash-drawer-panel'
-import { getCashDrawer, type CashDrawer } from '@/lib/queries/cash-drawer'
 
 export const metadata = {
   title: 'Fechamento de caixa',
@@ -30,33 +28,26 @@ export default async function FechamentoPage({
     byPayment: [],
     sales: [],
   }
-  const EMPTY_DRAWER: CashDrawer = {
-    opening: 0,
-    cashSales: 0,
-    supplies: 0,
-    withdrawals: 0,
-    refunds: 0,
-    expected: 0,
-    movements: [],
-    close: null,
-  }
-
-  const [{ data: summary, offline }, { data: drawer }] = await Promise.all([
-    tryQuery(() => getCashClose(localDate), EMPTY_SUMMARY),
-    tryQuery(() => getCashDrawer(localDate), EMPTY_DRAWER),
-  ])
+  const { data: summary, offline } = await tryQuery(
+    () => getCashClose(localDate),
+    EMPTY_SUMMARY,
+  )
 
   return (
     <>
       {offline && (
         <OfflineBanner message="Sem conexão — fechamento de caixa indisponível offline." />
       )}
-      <div className="space-y-6">
-        {/* A conferência vem ANTES do resumo: no fim do dia a pergunta é
-            quanto deveria haver na gaveta, não quanto se vendeu. */}
-        <CashDrawerPanel drawer={drawer} date={localDate} />
-        <CashCloseView summary={summary} />
-      </div>
+      {/* O fechamento é o resumo automático do dia: total, número de vendas
+          e quanto entrou em cada forma de pagamento.
+
+          A conferência manual da gaveta (fundo de troco, sangria,
+          suprimento, contagem no fim do dia) foi construída e retirada
+          desta tela a pedido do dono — a loja não trabalha assim. O
+          componente, as consultas e as tabelas continuam no projeto:
+          <CashDrawerPanel drawer={drawer} date={localDate} /> em
+          components/sales/cash-drawer-panel.tsx é o que traz de volta. */}
+      <CashCloseView summary={summary} />
     </>
   )
 }
