@@ -31,6 +31,15 @@ export default async function DashboardPage() {
   // Uma ida ao banco, não cinco. Antes eram três consultas que a página
   // esperava mais duas que só começavam depois — e o custo era o número
   // de viagens, não o tamanho delas.
+  //
+  // Medido em produção, 8 rodadas intercaladas com as outras telas para a
+  // variação de rede não favorecer ninguém:
+  //
+  //   /dashboard  617 ms -> 200 ms
+  //   /vendas     277 ms -> 255 ms
+  //   /produtos   217 ms -> 235 ms
+  //
+  // Era a tela mais lenta, o dobro das outras. Passou a ser a mais rápida.
   const { data: overview, offline } = await tryQuery(() => getDashboardOverview(), VAZIO)
   const { metrics } = overview
 
