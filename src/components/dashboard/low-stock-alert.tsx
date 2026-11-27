@@ -5,8 +5,13 @@ import { Button } from '@/components/ui/button'
 import { getLowStock } from '@/lib/queries/products'
 import { tryQuery } from '@/lib/supabase/try-query'
 
-export async function LowStockAlert() {
-  const { data: products } = await tryQuery(() => getLowStock(), [])
+interface LowStockAlertProps {
+  /** Quando a página já trouxe os dados, não há nova ida ao banco. */
+  products?: Awaited<ReturnType<typeof getLowStock>>
+}
+
+export async function LowStockAlert({ products: fornecidos }: LowStockAlertProps = {}) {
+  const products = fornecidos ?? (await tryQuery(() => getLowStock(), [])).data
 
   if (products.length === 0) {
     return (

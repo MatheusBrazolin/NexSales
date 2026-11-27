@@ -622,6 +622,10 @@ export interface Database {
           expected: number
         }[]
       }
+      dashboard_overview: {
+        Args: { p_top_limit?: number; p_low_limit?: number }
+        Returns: Json
+      }
       top_products: {
         Args: { p_limit?: number }
         Returns: { id: string; name: string; code: string; total: number }[]

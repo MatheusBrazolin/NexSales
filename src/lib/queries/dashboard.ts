@@ -1,6 +1,6 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
-import type { Sale } from '@/types/database'
+import type { ProductWithCategory, Sale } from '@/types/database'
 import { isElectron } from '@/lib/db/client'
 
 export async function getDashboardMetrics() {
@@ -58,4 +58,77 @@ export async function getSalesLast30Days() {
     date: row.day_label,
     total: Number(row.total),
   }))
+}
+
+
+export interface TopProduct {
+  id: string
+  name: string
+  code: string
+  total: number
+}
+
+export interface DashboardOverview {
+  metrics: Awaited<ReturnType<typeof getDashboardMetrics>>
+  chart: Awaited<ReturnType<typeof getSalesLast30Days>>
+  topProducts: TopProduct[]
+  lowStock: ProductWithCategory[]
+}
+
+/**
+ * Tudo que o dashboard mostra, numa ida só ao banco.
+ *
+ * Antes eram CINCO consultas em duas ondas: três que a página esperava, e
+ * mais duas que só começavam depois que as primeiras voltavam (os blocos
+ * em Suspense). O custo não era o tamanho das consultas — era o número de
+ * viagens, cada uma pagando a latência até o banco.
+ *
+ * No desktop não existe esta RPC: o SQLite local responde pelas funções
+ * separadas, que continuam valendo.
+ */
+export async function getDashboardOverview(): Promise<DashboardOverview> {
+  if (isElectron()) {
+    const [metrics, chart, topProducts, lowStock] = await Promise.all([
+      getDashboardMetrics(),
+      getSalesLast30Days(),
+      import('@/lib/db/queries/sales').then((m) => m.getTopProducts(5)),
+      import('@/lib/db/queries/products').then((m) => m.getLowStock()),
+    ])
+    return { metrics, chart, topProducts, lowStock }
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('dashboard_overview', {
+    p_top_limit: 5,
+    p_low_limit: 50,
+  })
+
+  if (error) throw new Error(error.message)
+
+  const bruto = (data ?? {}) as {
+    metrics?: Record<string, unknown>
+    recentSales?: Sale[]
+    chart?: DashboardOverview['chart']
+    topProducts?: { id: string; name: string; code: string; total: number }[]
+    lowStock?: ProductWithCategory[]
+  }
+
+  const m = bruto.metrics ?? {}
+
+  return {
+    metrics: {
+      todayTotal: Number(m.today_total ?? 0),
+      todayCount: Number(m.today_count ?? 0),
+      yesterdayTotal: Number(m.yesterday_total ?? 0),
+      monthTotal: Number(m.month_total ?? 0),
+      monthCount: Number(m.month_count ?? 0),
+      lastMonthTotal: Number(m.last_month_total ?? 0),
+      avgTicket: Number(m.avg_ticket ?? 0),
+      lowStockCount: Number(m.low_stock_count ?? 0),
+      recentSales: bruto.recentSales ?? [],
+    },
+    chart: bruto.chart ?? [],
+    topProducts: (bruto.topProducts ?? []).map((t) => ({ ...t, total: Number(t.total) })),
+    lowStock: bruto.lowStock ?? [],
+  }
 }

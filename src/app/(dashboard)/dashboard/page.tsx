@@ -1,34 +1,38 @@
-import { Suspense } from 'react'
 import { KpiCards } from '@/components/dashboard/kpi-cards'
 import { SalesChart } from '@/components/dashboard/sales-chart'
 import { LowStockAlert } from '@/components/dashboard/low-stock-alert'
 import { TopProducts } from '@/components/dashboard/top-products'
 import { RecentSales } from '@/components/dashboard/recent-sales'
-import { getDashboardMetrics, getSalesLast30Days } from '@/lib/queries/dashboard'
-import { Skeleton } from '@/components/ui/skeleton'
+import { getDashboardOverview, type DashboardOverview } from '@/lib/queries/dashboard'
 import { requireAdmin } from '@/lib/auth/roles'
 import { tryQuery } from '@/lib/supabase/try-query'
 import { OfflineBanner } from '@/components/offline/offline-banner'
 
-const EMPTY_METRICS = {
-  todayTotal: 0,
-  yesterdayTotal: 0,
-  monthTotal: 0,
-  lastMonthTotal: 0,
-  avgTicket: 0,
-  lowStockCount: 0,
-  todayCount: 0,
-  monthCount: 0,
-  recentSales: [] as Awaited<ReturnType<typeof getDashboardMetrics>>['recentSales'],
+const VAZIO: DashboardOverview = {
+  metrics: {
+    todayTotal: 0,
+    yesterdayTotal: 0,
+    monthTotal: 0,
+    lastMonthTotal: 0,
+    avgTicket: 0,
+    lowStockCount: 0,
+    todayCount: 0,
+    monthCount: 0,
+    recentSales: [],
+  },
+  chart: [],
+  topProducts: [],
+  lowStock: [],
 }
 
 export default async function DashboardPage() {
   await requireAdmin()
 
-  const [{ data: metrics, offline }, { data: chartData }] = await Promise.all([
-    tryQuery(() => getDashboardMetrics(), EMPTY_METRICS),
-    tryQuery(() => getSalesLast30Days(), []),
-  ])
+  // Uma ida ao banco, não cinco. Antes eram três consultas que a página
+  // esperava mais duas que só começavam depois — e o custo era o número
+  // de viagens, não o tamanho delas.
+  const { data: overview, offline } = await tryQuery(() => getDashboardOverview(), VAZIO)
+  const { metrics } = overview
 
   return (
     <div className="space-y-6">
@@ -52,19 +56,18 @@ export default async function DashboardPage() {
         monthCount={metrics.monthCount}
       />
 
-      <SalesChart data={chartData} />
+      <SalesChart data={overview.chart} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[480px]">
         <div className="lg:col-span-2 flex flex-col min-h-0">
           <RecentSales sales={metrics.recentSales} />
         </div>
         <div className="flex flex-col gap-4 overflow-y-auto min-h-0">
-          <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-            <TopProducts />
-          </Suspense>
-          <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-            <LowStockAlert />
-          </Suspense>
+          {/* Sem Suspense: os dados já vieram na mesma chamada, então não
+              há nada para esperar — e um esqueleto que pisca por 0 ms é
+              pior do que nenhum. */}
+          <TopProducts products={overview.topProducts} />
+          <LowStockAlert products={overview.lowStock} />
         </div>
       </div>
     </div>

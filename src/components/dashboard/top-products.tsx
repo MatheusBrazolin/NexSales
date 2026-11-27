@@ -11,8 +11,13 @@ const RANK_COLORS = [
   'bg-slate-200',
 ]
 
-export async function TopProducts() {
-  const { data: products } = await tryQuery(() => getTopProducts(5), [])
+interface TopProductsProps {
+  /** Quando a página já trouxe os dados, não há nova ida ao banco. */
+  products?: { id: string; name: string; code: string; total: number }[]
+}
+
+export async function TopProducts({ products: fornecidos }: TopProductsProps = {}) {
+  const products = fornecidos ?? (await tryQuery(() => getTopProducts(5), [])).data
 
   if (products.length === 0) {
     return (
