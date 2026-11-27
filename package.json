@@ -1,6 +1,6 @@
 {
   "name": "nexsales",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "description": "NexSales — Smart Sales Management Platform. PDV, gestão de produtos, clientes e relatórios.",
   "author": "OTM Tech",
@@ -106,6 +106,13 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "shortcutName": "NexSales"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "MatheusBrazolin",
+        "repo": "NexSales"
+      }
+    ]
   }
 }

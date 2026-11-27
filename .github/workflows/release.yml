@@ -1,0 +1,102 @@
+# ============================================================
+# Publica o instalador do desktop
+# ============================================================
+#
+# POR QUE ISTO EXISTE
+# -------------------
+# Até 28/11/2026 nao havia automacao nenhuma. Todo instalador era gerado a
+# mao, na maquina de alguem, e subido manualmente na release. O resultado
+# previsivel: a ultima versao publicada era de 25/06 — cinco meses atras.
+# Quem baixava recebia um PDV sem pagamento misto, sem devolucao, sem
+# auditoria e sem a busca sem acento.
+#
+# Nao era um bug. Era um processo que dependia de alguem lembrar.
+#
+# COMO USAR
+#   git tag v0.4.0 && git push origin v0.4.0
+#
+# O instalador aparece sozinho na release, com o numero da versao vindo da
+# tag — sem package.json desatualizado como estava (0.1.0 enquanto a
+# release dizia v0.3.0).
+# ============================================================
+
+name: Publicar instalador
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versao (ex.: 0.4.0). Sem tag, publica como rascunho.'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Instalador para Windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      # As chaves publicas do Supabase sao gravadas DENTRO do bundle (ver
+      # next.config.ts). Sem elas, o instalador sai e nao conecta em nada —
+      # e o erro so aparece na loja, no primeiro login. Entao falha aqui.
+      - name: Conferir segredos
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" ] || [ -z "${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" ]; then
+            echo "::error::Faltam os segredos NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY."
+            echo "::error::Configure em Settings -> Secrets and variables -> Actions."
+            echo "::error::Sem eles o instalador sai sem conseguir conectar no banco."
+            exit 1
+          fi
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Versao a partir da tag
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION="${TAG:-${{ github.event.inputs.version }}}"
+          echo "Publicando versao $VERSION"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+      # Compilado para o Node do sistema, que e quem roda o server.js do
+      # standalone. O ABI do Electron e outro — ver scripts/copy-standalone.mjs.
+      - name: Recompilar better-sqlite3
+        run: npm rebuild better-sqlite3
+
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+        run: npm run build
+
+      - name: Copiar assets do standalone
+        run: node scripts/copy-standalone.mjs
+
+      - name: Gerar e publicar o instalador
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish always
+
+      # Fica disponivel mesmo quando a publicacao na release falha, para
+      # nao perder um build de 10 minutos por causa de permissao.
+      - name: Guardar o instalador
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexSales-Instalador
+          path: instalador/*.exe
+          if-no-files-found: warn

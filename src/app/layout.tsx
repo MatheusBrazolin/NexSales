@@ -28,7 +28,14 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://nexsales-pdv.vercel.app'),
+  // O endereço do site não pertence ao código: muda com o ambiente
+  // (preview da Vercel, domínio próprio, outra loja). O valor antigo fica
+  // como padrão para nada quebrar em quem não configurou.
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
+      'https://nexsales-pdv.vercel.app',
+  ),
   title: 'NexSales — Smart Sales Platform',
   description: 'Plataforma moderna de gestão de vendas, clientes e performance do seu negócio.',
   applicationName: 'NexSales',
