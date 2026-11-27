@@ -28,6 +28,8 @@ export interface CashDrawer {
   cashSales: number
   supplies: number
   withdrawals: number
+  /** Devoluções pagas em dinheiro — saíram da gaveta. */
+  refunds: number
   /** Quanto deveria haver na gaveta agora. */
   expected: number
   movements: CashMovement[]
@@ -40,6 +42,7 @@ const EMPTY = {
   cashSales: 0,
   supplies: 0,
   withdrawals: 0,
+  refunds: 0,
   expected: 0,
 }
 
@@ -71,6 +74,7 @@ export async function getCashDrawer(date: string): Promise<CashDrawer> {
         cashSales: Number(row.cash_sales ?? 0),
         supplies: Number(row.supplies ?? 0),
         withdrawals: Number(row.withdrawals ?? 0),
+        refunds: Number(row.refunds ?? 0),
         expected: Number(row.expected ?? 0),
       }
     : EMPTY

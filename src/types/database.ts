@@ -244,6 +244,59 @@ export interface Database {
           }
         ]
       }
+      sale_returns: {
+        Row: {
+          id: string
+          sale_id: string
+          total_amount: number
+          refund_method: PaymentMethod
+          reason: string
+          actor_id: string
+          actor_email: string | null
+          business_date: string
+          created_at: string
+        }
+        Insert: never
+        Update: never
+        Relationships: [
+          {
+            foreignKeyName: 'sale_returns_sale_id_fkey'
+            columns: ['sale_id']
+            isOneToOne: false
+            referencedRelation: 'sales'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      sale_return_items: {
+        Row: {
+          id: string
+          return_id: string
+          sale_item_id: string
+          product_id: string | null
+          quantity: number
+          unit_price: number
+          subtotal: number
+        }
+        Insert: never
+        Update: never
+        Relationships: [
+          {
+            foreignKeyName: 'sale_return_items_return_id_fkey'
+            columns: ['return_id']
+            isOneToOne: false
+            referencedRelation: 'sale_returns'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'sale_return_items_product_id_fkey'
+            columns: ['product_id']
+            isOneToOne: false
+            referencedRelation: 'products'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       cash_movements: {
         Row: {
           id: string
@@ -527,8 +580,30 @@ export interface Database {
           cash_sales: number
           supplies: number
           withdrawals: number
+          refunds: number
           expected: number
         }[]
+      }
+      returnable_items: {
+        Args: { p_sale_id: string }
+        Returns: {
+          sale_item_id: string
+          product_id: string | null
+          product_name: string
+          unit_price: number
+          sold: number
+          returned: number
+          remaining: number
+        }[]
+      }
+      register_sale_return: {
+        Args: {
+          p_sale_id: string
+          p_items: Json
+          p_refund_method: PaymentMethod
+          p_reason: string
+        }
+        Returns: string
       }
       register_cash_movement: {
         Args: { p_kind: 'opening' | 'in' | 'out'; p_amount: number; p_reason: string }

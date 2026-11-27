@@ -168,6 +168,13 @@ export async function cancelSale(
   })
 
   if (error) {
+    if (error.message.includes('sale_returns_sale_id_fkey')) {
+      return {
+        success: false,
+        error:
+          'Esta venda tem devolução registrada e não pode ser excluída. O histórico precisa continuar contando as duas coisas.',
+      }
+    }
     if (error.message.includes('reason_required')) {
       return { success: false, error: 'Informe o motivo da exclusão.' }
     }
@@ -196,5 +203,61 @@ export async function cancelSale(
   revalidatePath('/dashboard')
   revalidatePath('/produtos')
 
+  return { success: true }
+}
+
+
+export interface SaleReturnResult {
+  success: boolean
+  error?: string
+}
+
+/**
+ * Registra uma devolução.
+ *
+ * A venda original NÃO é tocada: a devolução é um lançamento próprio que
+ * aponta para ela. Excluir a venda deixaria de contar que ela existiu — e
+ * é exatamente o que o modelo antigo fazia.
+ */
+export async function registerSaleReturn(
+  saleId: string,
+  items: { sale_item_id: string; quantity: number }[],
+  refundMethod: PaymentMethod,
+  reason: string,
+): Promise<SaleReturnResult> {
+  const supabase = await createClient()
+
+  const { error } = await supabase.rpc('register_sale_return', {
+    p_sale_id: saleId,
+    p_items: items as unknown as Json,
+    p_refund_method: refundMethod,
+    p_reason: reason,
+  })
+
+  if (error) {
+    const msg = error.message
+    if (msg.includes('exceeds_sold')) {
+      const product = msg.split(':')[1]?.trim() ?? 'item'
+      return { success: false, error: `Quantidade maior do que a vendida em: ${product}` }
+    }
+    if (msg.includes('reason_required')) {
+      return { success: false, error: 'Informe o motivo da devolução.' }
+    }
+    if (msg.includes('empty_return')) {
+      return { success: false, error: 'Escolha pelo menos um item para devolver.' }
+    }
+    if (msg.includes('item_not_in_sale')) {
+      return { success: false, error: 'Item não pertence a esta venda.' }
+    }
+    if (msg.includes('sale_not_found')) {
+      return { success: false, error: 'Venda não encontrada.' }
+    }
+    return { success: false, error: msg }
+  }
+
+  revalidatePath(`/vendas/${saleId}`)
+  revalidatePath('/vendas')
+  revalidatePath('/produtos')
+  revalidatePath('/vendas/fechamento')
   return { success: true }
 }

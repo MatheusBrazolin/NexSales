@@ -35,6 +35,7 @@ export default async function FechamentoPage({
     cashSales: 0,
     supplies: 0,
     withdrawals: 0,
+    refunds: 0,
     expected: 0,
     movements: [],
     close: null,

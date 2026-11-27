@@ -92,6 +92,13 @@ export function CashDrawerPanel({ drawer, date }: { drawer: CashDrawer; date: st
           <Row label="Vendas em dinheiro" value={drawer.cashSales} hint="só a parte paga em espécie" />
           <Row label="Suprimentos" value={drawer.supplies} />
           <Row label="Sangrias" value={-drawer.withdrawals} />
+          {drawer.refunds > 0 && (
+            <Row
+              label="Devoluções em dinheiro"
+              value={-drawer.refunds}
+              hint="saíram da gaveta"
+            />
+          )}
           <div className="flex justify-between items-baseline pt-2 border-t border-slate-200 dark:border-white/10">
             <dt className="font-semibold text-slate-900 dark:text-slate-100">
               Deveria haver na gaveta

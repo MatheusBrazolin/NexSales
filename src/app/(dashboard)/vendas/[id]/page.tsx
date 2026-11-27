@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, CreditCard, FileText, Printer, Receipt } from 'lucide-react'
+import { ArrowLeft, Calendar, CreditCard, FileText, Printer, Receipt, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -16,6 +16,8 @@ import { formatCurrency, formatDate, PAYMENT_LABELS } from '@/lib/utils/format'
 import { getCurrentUser } from '@/lib/auth/roles'
 import { shortSaleId } from '@/lib/utils/receipt'
 import { CancelSaleButton } from '@/components/sales/cancel-sale-button'
+import { SaleReturnButton } from '@/components/sales/sale-return-button'
+import { getReturnableItems, getSaleReturns } from '@/lib/queries/returns'
 import type { PaymentMethod } from '@/types/database'
 
 type PaymentStyle = { badge: string; dot: string }
@@ -72,6 +74,13 @@ export default async function VendaDetalhePage({
   // como o operador lê a venda.
   const payments = [...(sale.sale_payments ?? [])].sort((a, b) => b.amount - a.amount)
 
+  // Devoluções não bloqueiam a tela: se a consulta falhar, a venda
+  // continua visível sem o bloco de devolução.
+  const [returnable, returns] = await Promise.all([
+    getReturnableItems(sale.id).catch(() => []),
+    getSaleReturns(sale.id).catch(() => []),
+  ])
+
   const isAdminUser = currentUser?.role === 'admin'
 
   return (
@@ -96,6 +105,7 @@ export default async function VendaDetalhePage({
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{formatDate(sale.created_at)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <SaleReturnButton saleId={sale.id} items={returnable} />
           {isAdminUser && (
             <CancelSaleButton saleId={sale.id} shortId={shortSaleId(sale.id)} />
           )}
@@ -107,6 +117,38 @@ export default async function VendaDetalhePage({
           </Button>
         </div>
       </div>
+
+      {returns.length > 0 && (
+        <Card className="border-amber-200/80 dark:border-amber-500/20 shadow-sm overflow-hidden bg-amber-50/40 dark:bg-amber-500/8">
+          <CardHeader className="border-b border-amber-100 dark:border-amber-500/15 pb-3">
+            <CardTitle className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Undo2 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              Devoluções desta venda
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-3">
+            {returns.map((ret) => (
+              <div key={ret.id} className="text-sm">
+                <div className="flex justify-between gap-3 items-baseline">
+                  <span className="font-medium text-slate-900 dark:text-slate-100">
+                    {formatCurrency(ret.total_amount)} devolvidos em{' '}
+                    {PAYMENT_LABELS[ret.refund_method]}
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">
+                    {formatDate(ret.created_at)}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                  {ret.items.map((i) => `${i.quantity}× ${i.product_name}`).join(', ')}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 italic">
+                  “{ret.reason}” — {ret.actor_email ?? 'desconhecido'}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-slate-200/80 dark:border-white/8 shadow-sm overflow-hidden dark:bg-slate-800/60">
         <CardHeader className="bg-slate-50/60 dark:bg-white/3 border-b border-slate-100 dark:border-white/5 pb-3">
