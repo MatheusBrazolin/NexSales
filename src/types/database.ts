@@ -622,6 +622,10 @@ export interface Database {
           expected: number
         }[]
       }
+      top_products: {
+        Args: { p_limit?: number }
+        Returns: { id: string; name: string; code: string; total: number }[]
+      }
       returnable_items: {
         Args: { p_sale_id: string }
         Returns: {

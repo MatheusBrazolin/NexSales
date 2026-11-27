@@ -96,22 +96,24 @@ export async function getLowStock(): Promise<ProductWithCategory[]> {
     return sqliteGet()
   }
 
+  // O filtro acontece no banco, pela computed column stock_status.
+  //
+  // Antes era `order by stock_quantity limit 50` e o filtro em JavaScript
+  // depois — mesmo defeito do filtro da tela de produtos: se 50 itens sem
+  // controle de estoque (que vivem em 0) ocupassem a fatia, o alerta
+  // apareceria VAZIO com produtos de verdade acabando na prateleira.
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('products')
     .select('*, categories(id, name)')
     .eq('is_active', true)
+    .in('stock_status', ['low', 'out'])
     .order('stock_quantity')
     .limit(50)
 
   if (error) throw new Error(error.message)
 
-  // track_stock === false means the product has no stock control at all
-  // (the "Item Avulso" of the PDV). Those sit at 0/0 forever, so without
-  // this filter they permanently occupied the low-stock alert.
-  return ((data ?? []) as ProductWithCategory[]).filter(
-    (p) => p.track_stock && p.stock_quantity <= p.min_stock,
-  )
+  return (data ?? []) as ProductWithCategory[]
 }
 
 export async function getCategories(): Promise<Category[]> {
