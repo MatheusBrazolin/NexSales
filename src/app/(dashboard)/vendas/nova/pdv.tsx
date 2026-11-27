@@ -361,6 +361,12 @@ export function PDV({ avulsoProduct, pixEnabled = false }: PDVProps) {
         // Confirming a sale is the most consequential action in the app and
         // it used to be acknowledged only by a toast that the redirect
         // immediately swept away.
+        // Chave de idempotência queimada: ela identifica ESTA venda. Se a
+        // tela não desmontasse por algum motivo, a próxima venda reusaria
+        // a chave e o servidor devolveria a venda anterior — registrando
+        // nada, em silêncio.
+        setClientUuid(crypto.randomUUID())
+        setPixState('idle')
         setConfirmedTotal(total)
         await new Promise((resolve) => setTimeout(resolve, 850))
         router.push(`/vendas/${result.saleId}`)
