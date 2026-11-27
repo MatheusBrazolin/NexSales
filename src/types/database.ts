@@ -244,6 +244,37 @@ export interface Database {
           }
         ]
       }
+      cash_movements: {
+        Row: {
+          id: string
+          business_date: string
+          kind: 'opening' | 'in' | 'out'
+          amount: number
+          reason: string
+          actor_id: string
+          actor_email: string | null
+          created_at: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      cash_closes: {
+        Row: {
+          id: string
+          business_date: string
+          expected_cash: number
+          counted_cash: number
+          difference: number
+          notes: string | null
+          actor_id: string
+          actor_email: string | null
+          closed_at: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       audit_log: {
         Row: {
           id: string
@@ -488,6 +519,24 @@ export interface Database {
           p_role: UserRole
         }
         Returns: null
+      }
+      cash_expected: {
+        Args: { p_date: string }
+        Returns: {
+          opening: number
+          cash_sales: number
+          supplies: number
+          withdrawals: number
+          expected: number
+        }[]
+      }
+      register_cash_movement: {
+        Args: { p_kind: 'opening' | 'in' | 'out'; p_amount: number; p_reason: string }
+        Returns: string
+      }
+      close_cash_register: {
+        Args: { p_date: string; p_counted: number; p_notes?: string | null }
+        Returns: string
       }
       cancel_sale: {
         Args: {
