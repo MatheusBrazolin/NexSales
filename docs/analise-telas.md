@@ -9,6 +9,44 @@ da lista abaixo não aparece em nenhum lint, nenhum teste e nenhum build.
 
 ---
 
+## 0. Status
+
+Os 14 achados foram corrigidos. `npm run lint`, `npm run typecheck`,
+199 testes e `next build` passando; cobertura 28,1% → **29,7%**.
+
+| # | Achado | Correção |
+|---|---|---|
+| 1 | Relatório de lucro quebrado | ExportButtons recebe o CSV pronto |
+| 2.1 | App nasce invisível no HTML | Entrada em CSS (`nx-enter-*`) |
+| 2.2 | Fechamento sem modo escuro | 48 classes `dark:` + `useLightPrint()` |
+| 2.3 | Variação inventada no dashboard | `dashboard_metrics()` + `compareToPrevious()` |
+| 2.4 | Erro técnico cru | Componente `LoadError` |
+| 2.5 | Porcentagem com ponto | `formatPercent()` nos 7 pontos |
+| 2.6 | "Sexta-Feira, 27 De Novembro" | `first-letter:uppercase` |
+| 2.7 | Balão de validação do navegador | `noValidate` nos 5 formulários |
+| 2.8 | Senha parecia preenchida | Placeholder "Sua senha" |
+| 2.9 | Gráfico sem estado vazio | Estado vazio com ícone e texto |
+| 2.10 | `<select>` nativo destoando | `color-scheme` no tema |
+| 2.11 | Input de data invisível | idem |
+| 2.12 | Emoji no login | Ícones Lucide |
+| 2.13 | "autenticação Supabase" exposta | "Conexão segura e criptografada" |
+| 2.14 | Hero travado em 260px | Cresce em `xl` e `2xl` |
+
+Dois achados extras surgiram durante a correção:
+
+- **`vitest.setup.ts` não tinha o `cleanup` do testing-library.** Um hook
+  montado num teste continuava vivo e reagindo a eventos disparados pelos
+  testes seguintes. Foi assim que o `useLightPrint` pareceu falhar: uma
+  instância esquecida tirava a classe `dark` antes, e a instância sob teste
+  concluía que a página já estava clara.
+- **Imprimir a partir do tema escuro sairia com texto branco em papel
+  branco.** Tailwind compila `dark:` para cor literal, que o `@media print`
+  não alcança. `useLightPrint()` remove a classe `dark` enquanto o diálogo
+  de impressão está aberto, preservando as cores que têm significado
+  (verde de lucro, vermelho de prejuízo, selos de pagamento).
+
+---
+
 ## 1. Já corrigido nesta rodada
 
 ### 🔴 A tela de Relatório de lucro estava quebrada — corrigido
@@ -35,7 +73,7 @@ serializa — e ganhou `buildCsvReport()` para montar preâmbulo + tabela.
 
 ---
 
-## 2. Defeitos encontrados (não corrigidos ainda)
+## 2. Os defeitos, como foram encontrados
 
 ### 🔴 2.1 O app inteiro nasce invisível no HTML do servidor
 
