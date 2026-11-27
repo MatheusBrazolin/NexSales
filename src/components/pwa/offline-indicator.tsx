@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { WifiOff } from 'lucide-react'
+import { spring, useMotionVariants } from '@/lib/motion'
 
 /**
  * Small floating chip that appears in the bottom-right corner whenever the
@@ -17,6 +19,11 @@ export function OfflineIndicator() {
   // Default to `true` to avoid a flash of the chip during SSR/hydration.
   // The first effect tick corrects it from `navigator.onLine`.
   const [online, setOnline] = useState(true)
+  const chipVariants = useMotionVariants({
+    hidden: { opacity: 0, y: 16, scale: 0.96 },
+    visible: { opacity: 1, y: 0, scale: 1, transition: spring.soft },
+    exit: { opacity: 0, y: 8, scale: 0.96, transition: { duration: 0.12 } },
+  })
 
   useEffect(() => {
     setOnline(navigator.onLine)
@@ -30,21 +37,27 @@ export function OfflineIndicator() {
     }
   }, [])
 
-  if (online) return null
-
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full bg-red-600 text-white px-3 py-1.5 text-xs font-semibold shadow-lg shadow-red-900/30 ring-1 ring-red-700/40"
-    >
-      {/* Pontinho pulsando reforça o "alarme" de conexão caída. */}
-      <span className="relative flex h-2 w-2" aria-hidden>
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-300 opacity-75" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-red-200" />
-      </span>
-      <WifiOff className="h-3.5 w-3.5" aria-hidden />
-      <span>Sem internet — usando dados em cache.</span>
-    </div>
+    <AnimatePresence>
+      {!online && (
+        <motion.div
+          role="status"
+          aria-live="polite"
+          variants={chipVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full bg-red-600 text-white px-3 py-1.5 text-xs font-semibold shadow-lg shadow-red-900/30 ring-1 ring-red-700/40"
+        >
+          {/* Pontinho pulsando reforça o "alarme" de conexão caída. */}
+          <span className="relative flex h-2 w-2" aria-hidden>
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-300 opacity-75 motion-reduce:animate-none" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-200" />
+          </span>
+          <WifiOff className="h-3.5 w-3.5" aria-hidden />
+          <span>Sem internet — usando dados em cache.</span>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

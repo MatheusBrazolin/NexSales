@@ -11,7 +11,9 @@ import {
   Minus,
   type LucideIcon,
 } from 'lucide-react'
+import { AnimatedNumber } from '@/components/ui/animated-number'
 import { formatCurrency } from '@/lib/utils/format'
+import { staggerContainer, useMotionVariants } from '@/lib/motion'
 
 interface KpiCardsProps {
   todayTotal: number
@@ -26,7 +28,9 @@ type Trend = 'up' | 'down' | 'flat'
 
 interface KpiCard {
   title: string
-  value: string
+  /** Raw value, so the card can count to it instead of swapping text. */
+  value: number
+  formatValue: (value: number) => string
   sub: string
   icon: LucideIcon
   iconColor: string
@@ -63,25 +67,15 @@ function TrendBadge({ trend, label }: { trend: Trend; label: string }) {
   )
 }
 
-const containerVariants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.08,
-    },
-  },
-}
+const containerBase = staggerContainer(0.08)
 
-const cardVariants = {
+const cardBase = {
   hidden: { opacity: 0, y: 16, scale: 0.98 },
   visible: {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: {
-      duration: 0.4,
-      ease: 'easeOut' as const,
-    },
+    transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const },
   },
 }
 
@@ -93,10 +87,14 @@ export function KpiCards({
   todayCount,
   monthCount,
 }: KpiCardsProps) {
+  const containerVariants = useMotionVariants(containerBase)
+  const cardVariants = useMotionVariants(cardBase)
+
   const cards: KpiCard[] = [
     {
       title: 'Vendas Hoje',
-      value: formatCurrency(todayTotal),
+      value: todayTotal,
+      formatValue: formatCurrency,
       sub: `${todayCount} venda${todayCount !== 1 ? 's' : ''} registrada${todayCount !== 1 ? 's' : ''}`,
       icon: DollarSign,
       iconColor: 'text-violet-600 dark:text-violet-400',
@@ -107,7 +105,8 @@ export function KpiCards({
     },
     {
       title: 'Vendas no Mês',
-      value: formatCurrency(monthTotal),
+      value: monthTotal,
+      formatValue: formatCurrency,
       sub: `${monthCount} venda${monthCount !== 1 ? 's' : ''} no período`,
       icon: TrendingUp,
       iconColor: 'text-emerald-600 dark:text-emerald-400',
@@ -118,7 +117,8 @@ export function KpiCards({
     },
     {
       title: 'Ticket Médio',
-      value: formatCurrency(avgTicket),
+      value: avgTicket,
+      formatValue: formatCurrency,
       sub: 'Valor médio por venda',
       icon: ShoppingBag,
       iconColor: 'text-cyan-600 dark:text-cyan-400',
@@ -129,7 +129,8 @@ export function KpiCards({
     },
     {
       title: 'Estoque Baixo',
-      value: String(lowStockCount),
+      value: lowStockCount,
+      formatValue: (v: number) => String(Math.round(v)),
       sub: lowStockCount > 0 ? 'produto(s) abaixo do mínimo' : 'tudo em ordem',
       icon: AlertTriangle,
       iconColor: lowStockCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500',
@@ -177,9 +178,11 @@ export function KpiCards({
                   {card.title}
                 </p>
               </div>
-              <p className="text-[28px] font-bold text-slate-900 dark:text-slate-50 leading-none tabular-nums mb-4">
-                {card.value}
-              </p>
+              <AnimatedNumber
+                value={card.value}
+                format={card.formatValue}
+                className="block text-[28px] font-bold text-slate-900 dark:text-slate-50 leading-none tabular-nums mb-4"
+              />
               <div className="flex items-center gap-2">
                 <TrendBadge trend={card.trend} label={card.trendLabel} />
                 <span className="text-xs text-slate-400 dark:text-slate-500 truncate">{card.sub}</span>

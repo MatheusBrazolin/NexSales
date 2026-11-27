@@ -1,10 +1,13 @@
 ﻿'use client'
 
 import { useState, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Minus, Plus, Trash2, ShoppingCart, Pencil, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { AnimatedNumber } from '@/components/ui/animated-number'
 import { formatCurrency } from '@/lib/utils/format'
+import { fadeUp, listRow, useMotionVariants } from '@/lib/motion'
 import type { CartItem } from '@/types/database'
 
 interface CartProps {
@@ -20,6 +23,9 @@ export function Cart({ items, onUpdateQty, onUpdatePrice, onUpdateDescription, o
     (sum, item) => sum + (item.customPrice ?? item.product.sale_price) * item.quantity,
     0,
   )
+
+  const rowVariants = useMotionVariants(listRow)
+  const emptyVariants = useMotionVariants(fadeUp)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editRaw, setEditRaw] = useState('')
@@ -43,15 +49,25 @@ export function Cart({ items, onUpdateQty, onUpdatePrice, onUpdateDescription, o
 
   if (items.length === 0) {
     return (
-      <div className="py-12 text-center text-slate-400">
+      <motion.div
+        className="py-12 text-center text-slate-400"
+        variants={emptyVariants}
+        initial="hidden"
+        animate="visible"
+      >
         <ShoppingCart className="h-10 w-10 mx-auto mb-3 opacity-30" />
         <p className="text-sm">Nenhum produto adicionado</p>
-      </div>
+      </motion.div>
     )
   }
 
   return (
     <div className="space-y-1">
+      {/* The cart is the one place where movement carries information: an item
+          sliding in confirms the barcode scan landed, and a row collapsing on
+          removal shows which one left. Without it, a fast scanner sequence is
+          indistinguishable from a scanner that stopped working. */}
+      <AnimatePresence initial={false}>
       {items.map((item) => {
         const effectivePrice = item.customPrice ?? item.product.sale_price
         const isPriceOverridden =
@@ -60,9 +76,14 @@ export function Cart({ items, onUpdateQty, onUpdatePrice, onUpdateDescription, o
         const isEditing = editingId === item.product.id
 
         return (
-          <div
+          <motion.div
             key={item.product.id}
-            className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-white/8 bg-white dark:bg-slate-800/60"
+            layout
+            variants={rowVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-white/8 bg-white dark:bg-slate-800/60 overflow-hidden"
           >
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate text-slate-900 dark:text-slate-100">{item.product.name}</p>
@@ -174,13 +195,18 @@ export function Cart({ items, onUpdateQty, onUpdatePrice, onUpdateDescription, o
             >
               <Trash2 className="h-4 w-4" />
             </Button>
-          </div>
+          </motion.div>
         )
       })}
+      </AnimatePresence>
 
       <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-200 dark:border-white/8">
         <span className="font-semibold text-slate-700 dark:text-slate-300">Total</span>
-        <span className="text-xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(total)}</span>
+        <AnimatedNumber
+          value={total}
+          format={formatCurrency}
+          className="text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums"
+        />
       </div>
     </div>
   )

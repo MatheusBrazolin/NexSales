@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import {
   Loader2,
@@ -37,8 +38,10 @@ import { createSale } from '../actions'
 import { searchCustomers, createCustomer } from '../../clientes/actions'
 import { searchCustomersOffline } from '@/lib/offline/customers-repo'
 import { queueSale } from '@/lib/offline/sales-repo'
+import { AnimatedNumber } from '@/components/ui/animated-number'
 import { formatCurrency } from '@/lib/utils/format'
 import { printReceipt } from '@/lib/utils/print-receipt'
+import { fadeUp, spring, useMotionVariants, usePrefersReducedMotion } from '@/lib/motion'
 import type { CartItem, CustomerBalance, PaymentMethod, Product } from '@/types/database'
 
 /** Snapshot of a sale saved offline, for the provisional confirmation banner. */
@@ -62,11 +65,46 @@ interface PDVProps {
 
 export function PDV({ avulsoProduct }: PDVProps) {
   const router = useRouter()
+  const panelVariants = useMotionVariants({
+    hidden: { opacity: 0, y: 8, scale: 0.98 },
+    visible: { opacity: 1, y: 0, scale: 1, transition: spring.soft },
+    exit: { opacity: 0, y: -4, transition: { duration: 0.12 } },
+  })
+  const bannerVariants = useMotionVariants(fadeUp)
+  const overlayVariants = useMotionVariants({
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: 0.18 } },
+    exit: { opacity: 0, transition: { duration: 0.18 } },
+  })
+  const prefersReduced = usePrefersReducedMotion()
+  // The check draws itself; under reduced motion it is simply already drawn.
+  const checkCircleVariants = {
+    hidden: { pathLength: prefersReduced ? 1 : 0, opacity: prefersReduced ? 1 : 0 },
+    visible: {
+      pathLength: 1,
+      opacity: 1,
+      transition: { duration: prefersReduced ? 0 : 0.35, ease: [0.16, 1, 0.3, 1] as const },
+    },
+  }
+  const checkPathVariants = {
+    hidden: { pathLength: prefersReduced ? 1 : 0, opacity: prefersReduced ? 1 : 0 },
+    visible: {
+      pathLength: 1,
+      opacity: 1,
+      transition: {
+        duration: prefersReduced ? 0 : 0.3,
+        delay: prefersReduced ? 0 : 0.2,
+        ease: [0.16, 1, 0.3, 1] as const,
+      },
+    },
+  }
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('')
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [offlineSale, setOfflineSale] = useState<OfflineSaleConfirmation | null>(null)
+  /** Total of the sale just confirmed, shown in the success overlay. */
+  const [confirmedTotal, setConfirmedTotal] = useState<number | null>(null)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [cashReceivedRaw, setCashReceivedRaw] = useState('')
 
@@ -260,7 +298,12 @@ export function PDV({ avulsoProduct }: PDVProps) {
           return
         }
 
-        toast.success('Venda registrada com sucesso!')
+        // Hold the success state on screen for a beat before navigating.
+        // Confirming a sale is the most consequential action in the app and
+        // it used to be acknowledged only by a toast that the redirect
+        // immediately swept away.
+        setConfirmedTotal(total)
+        await new Promise((resolve) => setTimeout(resolve, 850))
         router.push(`/vendas/${result.saleId}`)
       } catch {
         await saveOffline(clientUuid)
@@ -344,8 +387,69 @@ export function PDV({ avulsoProduct }: PDVProps) {
 
   return (
     <div className="space-y-4 pb-24 lg:pb-0">
+      {/* Running commentary for screen readers: the cart total changes as a
+          side effect of scanning, and nothing else announced it. */}
+      <p aria-live="polite" className="sr-only">
+        {itemCount === 0
+          ? 'Carrinho vazio'
+          : `${itemCount} ${itemCount === 1 ? 'item' : 'itens'} no carrinho, total ${formatCurrency(total)}`}
+      </p>
+
+      <AnimatePresence>
+        {confirmedTotal !== null && (
+          <motion.div
+            variants={overlayVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-emerald-600/95 backdrop-blur-sm text-white"
+            role="status"
+            aria-live="assertive"
+          >
+            <motion.svg
+              width="88"
+              height="88"
+              viewBox="0 0 52 52"
+              aria-hidden
+              className="drop-shadow"
+            >
+              <motion.circle
+                cx="26"
+                cy="26"
+                r="24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeOpacity="0.45"
+                variants={checkCircleVariants}
+              />
+              <motion.path
+                d="M15 27 l8 8 l15 -16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                variants={checkPathVariants}
+              />
+            </motion.svg>
+            <p className="text-lg font-semibold">Venda registrada</p>
+            <p className="text-3xl font-bold tabular-nums">
+              {formatCurrency(confirmedTotal)}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
       {offlineSale && (
-        <div className="relative rounded-xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 shadow-sm">
+        <motion.div
+          variants={bannerVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="relative rounded-xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 shadow-sm"
+        >
           <button
             type="button"
             onClick={() => setOfflineSale(null)}
@@ -386,8 +490,9 @@ export function PDV({ avulsoProduct }: PDVProps) {
             <Printer className="h-4 w-4 mr-1.5" />
             Imprimir recibo
           </Button>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-4">
@@ -533,22 +638,35 @@ export function PDV({ avulsoProduct }: PDVProps) {
                     </div>
                   </div>
 
-                  {hasCashEntered && (
-                    <div
-                      className={
-                        cashShort
-                          ? 'rounded-xl bg-red-600 px-4 py-4 shadow-md shadow-red-900/10 text-white'
-                          : 'rounded-xl bg-emerald-600 px-4 py-4 shadow-md shadow-emerald-900/10 text-white'
-                      }
-                    >
-                      <p className="text-[11px] font-semibold uppercase tracking-wider opacity-90">
-                        {cashShort ? 'Falta receber' : 'Troco a devolver'}
-                      </p>
-                      <p className="text-4xl font-bold tabular-nums leading-tight mt-1">
-                        {formatCurrency(Math.abs(change))}
-                      </p>
-                    </div>
-                  )}
+                  <AnimatePresence>
+                    {hasCashEntered && (
+                      <motion.div
+                        key={cashShort ? 'short' : 'change'}
+                        variants={panelVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        className={
+                          cashShort
+                            ? 'rounded-xl bg-red-600 px-4 py-4 shadow-md shadow-red-900/10 text-white'
+                            : 'rounded-xl bg-emerald-600 px-4 py-4 shadow-md shadow-emerald-900/10 text-white'
+                        }
+                      >
+                        <p className="text-[11px] font-semibold uppercase tracking-wider opacity-90">
+                          {cashShort ? 'Falta receber' : 'Troco a devolver'}
+                        </p>
+                        {/* Counts to the new figure: the cashier is reading
+                            this number while still handling notes, and a value
+                            that moves is far harder to misread than one that
+                            silently swaps between keystrokes. */}
+                        <AnimatedNumber
+                          value={Math.abs(change)}
+                          format={formatCurrency}
+                          className="block text-4xl font-bold tabular-nums leading-tight mt-1"
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
 
@@ -698,13 +816,19 @@ export function PDV({ avulsoProduct }: PDVProps) {
               <div className="rounded-lg bg-slate-900 dark:bg-slate-950/80 dark:border dark:border-white/8 text-white p-4">
                 <div className="flex items-center justify-between text-xs text-slate-400">
                   <span>Subtotal ({itemCount} {itemCount === 1 ? 'item' : 'itens'})</span>
-                  <span className="tabular-nums">{formatCurrency(total)}</span>
+                  <AnimatedNumber
+                    value={total}
+                    format={formatCurrency}
+                    className="tabular-nums"
+                  />
                 </div>
                 <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between">
                   <span className="text-sm text-slate-300 font-medium">Total</span>
-                  <span className="text-3xl font-bold tracking-tight tabular-nums">
-                    {formatCurrency(total)}
-                  </span>
+                  <AnimatedNumber
+                    value={total}
+                    format={formatCurrency}
+                    className="text-3xl font-bold tracking-tight tabular-nums"
+                  />
                 </div>
               </div>
 
@@ -744,9 +868,11 @@ export function PDV({ avulsoProduct }: PDVProps) {
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
                 {itemCount} {itemCount === 1 ? 'item' : 'itens'}
               </p>
-              <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100 leading-tight">
-                {formatCurrency(total)}
-              </p>
+              <AnimatedNumber
+                value={total}
+                format={formatCurrency}
+                className="block text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100 leading-tight"
+              />
             </div>
             <Button
               className="h-12 px-6 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold shadow-sm disabled:opacity-50 transition-colors"

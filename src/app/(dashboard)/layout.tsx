@@ -3,6 +3,7 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { OfflineIndicator } from '@/components/pwa/offline-indicator'
 import { SyncProvider } from '@/components/pwa/sync-provider'
+import { PageTransition } from '@/components/layout/page-transition'
 import { getCurrentUser } from '@/lib/auth/roles'
 
 export default async function DashboardLayout({
@@ -17,6 +18,15 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 relative">
+      {/* First tab stop on every page: lets keyboard users jump the sidebar,
+          which is 11 links deep before the actual content starts. */}
+      <a
+        href="#conteudo"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white focus:shadow-lg"
+      >
+        Pular para o conteúdo
+      </a>
+
       {/* Gradient blobs — hidden on mobile (too expensive to paint) */}
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden hidden sm:block" aria-hidden>
         <div className="absolute top-28 left-[22%] h-[560px] w-[560px] rounded-full blur-[140px] bg-primary/8 dark:bg-primary/20" />
@@ -26,7 +36,13 @@ export default async function DashboardLayout({
       <Sidebar role={user.role} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">{children}</main>
+        <main
+          id="conteudo"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 focus:outline-none"
+        >
+          <PageTransition>{children}</PageTransition>
+        </main>
       </div>
       {/* Offline plumbing — only mounted for authenticated users since the
           sync calls would 401 without a session and the offline banner only

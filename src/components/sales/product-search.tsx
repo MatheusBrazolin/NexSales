@@ -1,12 +1,14 @@
 ﻿'use client'
 
 import { useState, useEffect, useRef, type KeyboardEvent } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { Search, Plus, Minus, ScanBarcode, CheckCircle2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils/format'
 import { useDebounce } from '@/hooks/use-debounce'
+import { slideInLeft, spring, staggerContainer, useMotionVariants } from '@/lib/motion'
 import {
   searchProducts,
   getByCode,
@@ -19,6 +21,14 @@ interface ProductSearchProps {
 }
 
 export function ProductSearch({ onAdd }: ProductSearchProps) {
+  const listVariants = useMotionVariants(staggerContainer(0.03))
+  const rowVariants = useMotionVariants(slideInLeft)
+  const stagedVariants = useMotionVariants({
+    hidden: { opacity: 0, y: -6, scale: 0.98 },
+    visible: { opacity: 1, y: 0, scale: 1, transition: spring.soft },
+    exit: { opacity: 0, scale: 0.98, transition: { duration: 0.12 } },
+  })
+
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
@@ -219,8 +229,15 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
       </div>
 
       {/* ── Staged product: quantity confirmation ── */}
+      <AnimatePresence>
       {staged && (
-        <div className="rounded-lg border-2 border-primary/60 bg-primary/5 dark:bg-primary/10 p-3 space-y-3 shadow-sm">
+        <motion.div
+          variants={stagedVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          className="rounded-lg border-2 border-primary/60 bg-primary/5 dark:bg-primary/10 p-3 space-y-3 shadow-sm"
+        >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{staged.product.name}</p>
@@ -288,8 +305,9 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
           <p className="text-[11px] text-primary font-medium">
             Digite a quantidade e pressione <strong>Enter</strong> · <strong>Esc</strong> para cancelar
           </p>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* ── Hints (only in search mode, no results open) ── */}
       {!staged && results.length === 0 && (
@@ -313,14 +331,18 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
 
       {/* ── Search results dropdown ── */}
       {results.length > 0 && !staged && (
-        <div
+        <motion.div
           id="product-results"
           role="listbox"
+          variants={listVariants}
+          initial="hidden"
+          animate="visible"
           className="border border-slate-200 dark:border-white/8 rounded-lg divide-y divide-slate-100 dark:divide-white/5 bg-white dark:bg-slate-800 shadow-sm max-h-48 sm:max-h-64 overflow-y-auto"
         >
           {results.map((product, index) => (
-            <button
+            <motion.button
               key={product.id}
+              variants={rowVariants}
               id={`result-${index}`}
               ref={(el) => { resultRefs.current[index] = el }}
               type="button"
@@ -355,9 +377,9 @@ export function ProductSearch({ onAdd }: ProductSearchProps) {
                   ? <span className="text-primary/80 dark:text-primary font-medium">↵ Enter</span>
                   : 'clique ou ↓'}
               </span>
-            </button>
+            </motion.button>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* Navigation hint when dropdown is open */}

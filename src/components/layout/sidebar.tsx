@@ -22,6 +22,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { slideInLeft, spring, staggerContainer, useMotionVariants } from '@/lib/motion'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import type { UserRole } from '@/types/database'
 
@@ -117,20 +118,6 @@ function isItemActive(href: string, pathname: string): boolean {
   return pathname.startsWith(href)
 }
 
-const sectionVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.045 } },
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, x: -10 },
-  visible: {
-    opacity: 1,
-    x: 0,
-    transition: { duration: 0.22, ease: 'easeOut' as const },
-  },
-}
-
 interface NavListProps {
   role: UserRole
   onNavigate?: () => void
@@ -139,6 +126,8 @@ interface NavListProps {
 
 function NavList({ role, onNavigate, isMobile }: NavListProps) {
   const pathname = usePathname()
+  const sectionVariants = useMotionVariants(staggerContainer(0.045))
+  const itemVariants = useMotionVariants(slideInLeft)
 
   const visibleSections = navSections
     .map((section) => ({
@@ -177,7 +166,7 @@ function NavList({ role, onNavigate, isMobile }: NavListProps) {
                         aria-hidden
                         className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-full bg-primary/90"
                         initial={false}
-                        transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                        transition={spring.snappy}
                       />
                     )}
                   </AnimatePresence>
