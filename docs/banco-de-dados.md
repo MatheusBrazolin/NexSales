@@ -83,37 +83,64 @@ hora da venda. O relatório de lucro usava o custo *atual* do produto: se o
 fornecedor subisse o preço hoje, a margem de uma venda de junho mudava
 sozinha. Um relatório que reescreve o passado não serve para decidir nada.
 
-## Como aplicar migrations (o ponto em aberto)
+## Como aplicar migrations
 
-Hoje as migrations foram aplicadas **à mão, pelo painel**. Foi exatamente
-isso que fez o banco divergir do repositório e derrubar o PDV em
-27/11/2026: a `20260623000001_track_stock.sql` tinha sido só metade
-aplicada, e uma venda falhou com `column "item_description" does not
-exist`. O repositório dizia uma coisa, o banco era outra, e nada avisava.
-
-O conserto é o Supabase CLI. Falta só o login, que precisa das mãos do
-dono:
+O CLI foi linkado ao projeto Lojinha em 27/11/2026. A partir de agora:
 
 ```bash
-supabase login
+supabase db push --remote
 ```
 
-Depois, uma vez:
+Escrever a migration no repositório e rodar isso é o processo inteiro. Não
+aplique SQL pelo painel: foi exatamente a aplicação manual que fez o banco
+divergir do repositório e derrubou o PDV em 27/11/2026 — a
+`20260623000001_track_stock.sql` tinha sido só metade aplicada, e uma venda
+falhou com `column "item_description" does not exist`. O repositório dizia
+uma coisa, o banco era outra, e nada avisava.
+
+> O `--remote` é obrigatório. Sem ele o CLI mira um Postgres local que não
+> existe nesta máquina e devolve `ECONNREFUSED 127.0.0.1:54322`.
+
+### O que o CLI encontrou no primeiro dia
+
+As 23 migrations do repositório **não conseguiam reconstruir o banco**. O
+replay parava no oitavo arquivo:
+
+```
+ERROR: unsafe use of new value "fiado" of enum type payment_method
+HINT:  New enum values must be committed before they can be used.
+```
+
+A `20260611000000_fiado.sql` adicionava o valor ao enum e o usava 180 linhas
+abaixo. Pelo painel passa, porque cada bloco colado vira uma transação
+separada; pelo CLI, cada arquivo roda inteiro numa transação só. Corrigido
+separando o `ALTER TYPE` em `20260610000000_payment_method_fiado.sql`.
+
+E `create_sale_with_items` tinha **três versões vivas** no banco:
+`create or replace function` não substitui a função quando a lista de
+parâmetros muda — cria sobrecarga. Como os parâmetros novos têm `DEFAULT`,
+uma chamada sem `p_discount` casaria com as três e o Postgres recusaria com
+`function is not unique`. Pior: as versões antigas tinham a lógica antiga
+(o bug do preço zero, e nenhuma gravava `unit_cost`). Removidas em
+`20261127000009_drop_stale_sale_rpc.sql`.
+
+### Regras que saíram disso
+
+1. **Uma migration, uma transação.** Se o arquivo não puder rodar inteiro de
+   uma vez, ele está errado — separe.
+2. **Mudou a assinatura de uma função? `drop function` antes.** Senão você
+   ganha uma sobrecarga, não uma substituição.
+3. **Validar com replay do zero**, num Postgres limpo, cada arquivo em sua
+   transação. É o único jeito de saber que o repositório ainda reconstrói o
+   banco.
+
+### Baseline (feito uma vez, não repetir)
+
+As 24 migrations que já estavam em produção foram marcadas no histórico sem
+serem reaplicadas:
 
 ```bash
-supabase link --project-ref hvctkbrvjcsfqtjeycrn
+supabase migration repair --remote --status applied <versões>
 ```
 
-Como as migrations já existentes foram aplicadas por fora, o histórico
-precisa ser marcado antes do primeiro push — senão o CLI tentaria recriar
-tabelas que já existem:
-
-```bash
-supabase migration list
-```
-
-E daí em diante, aplicar vira um comando só:
-
-```bash
-supabase db push
-```
+Hoje `supabase migration list --remote` mostra 25 migrations e 0 pendentes.
