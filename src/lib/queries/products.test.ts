@@ -20,6 +20,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn().mockRejectedValue(new Error('Supabase must not be called')),
 }))
 
+import { createClient } from '@/lib/supabase/server'
 import { isElectron } from '@/lib/db/client'
 import * as sqliteQueries from '@/lib/db/queries/products'
 import { getProductsPaged, getLowStock, getCategories } from '@/lib/queries/products'
@@ -112,5 +113,58 @@ describe('getCategories — Electron path', () => {
 
     expect(result).toHaveLength(1)
     expect(result[0].name).toBe('Bebidas')
+  })
+})
+
+describe('getProductsPaged — filtro de busca no Supabase', () => {
+  /** Builder encadeável e aguardável, como o do supabase-js. */
+  function builder() {
+    const obj = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      or: vi.fn(),
+      lte: vi.fn(),
+      order: vi.fn(),
+      range: vi.fn(),
+      then(resolve: (v: unknown) => void) {
+        return Promise.resolve({ data: [], error: null, count: 0 }).then(resolve)
+      },
+    }
+    for (const key of ['select', 'eq', 'or', 'lte', 'order', 'range'] as const) {
+      obj[key].mockReturnValue(obj)
+    }
+    return obj
+  }
+
+  async function runSearch(search: string) {
+    const b = builder()
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn(() => b),
+    } as unknown as Awaited<ReturnType<typeof createClient>>)
+
+    await getProductsPaged({ search })
+    // Embrulhado: `b` tem `then`, então devolvê-lo direto de uma função
+    // async faria o await desembrulhar o mock no lugar de retorná-lo.
+    return { b }
+  }
+
+  it('busca pela coluna normalizada, para o acento não esconder o produto', async () => {
+    const { b } = await runSearch('açúcar')
+
+    // O filtro tem que sair sem acento dos dois lados: a coluna name_norm
+    // guarda "acucar" e o termo precisa chegar igual.
+    expect(b.or).toHaveBeenCalledWith('name_norm.ilike.%acucar%,code.ilike.%acucar%')
+  })
+
+  it('acha o produto acentuado mesmo quando o termo vem sem acento', async () => {
+    const { b } = await runSearch('ACUCAR')
+
+    expect(b.or).toHaveBeenCalledWith('name_norm.ilike.%acucar%,code.ilike.%acucar%')
+  })
+
+  it('não monta filtro quando sobra texto vazio depois de limpar', async () => {
+    const { b } = await runSearch('%%%')
+
+    expect(b.or).not.toHaveBeenCalled()
   })
 })

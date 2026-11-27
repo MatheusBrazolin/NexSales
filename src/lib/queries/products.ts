@@ -2,6 +2,7 @@ import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import type { Category, ProductWithCategory } from '@/types/database'
 import { isElectron } from '@/lib/db/client'
+import { normalizeSearchText } from '@/lib/utils/search-text'
 
 export type StockFilter = 'all' | 'ok' | 'low' | 'out'
 
@@ -45,8 +46,13 @@ export async function getProductsPaged(
     .eq('is_active', true)
 
   if (params.search) {
-    const s = sanitizeForIlike(params.search)
-    query = query.or(`name.ilike.%${s}%,code.ilike.%${s}%`)
+    // `name_norm` é a computed column criada em 20261127000008: o nome sem
+    // acento e em minúsculas. Filtrar por `name` cru deixava "acucar" sem
+    // achar "Açúcar" — o dono procurava um produto que existe, não achava,
+    // e cadastrava de novo. O termo vai normalizado do mesmo jeito dos dois
+    // lados, e o `code` fica como está porque é ASCII.
+    const s = sanitizeForIlike(normalizeSearchText(params.search))
+    if (s) query = query.or(`name_norm.ilike.%${s}%,code.ilike.%${s}%`)
   }
 
   if (params.categoryId) {

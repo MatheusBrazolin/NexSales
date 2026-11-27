@@ -1,4 +1,5 @@
 import 'server-only'
+import { normalizeSearchText } from '@/lib/utils/search-text'
 import { getDb } from '../client'
 import type { Category, ProductWithCategory } from '@/types/database'
 import type { ProductsListParams, ProductsListResult } from '@/lib/queries/products'
@@ -55,8 +56,11 @@ export function getProductsPaged(params: ProductsListParams = {}): ProductsListR
   const bindParams: unknown[] = []
 
   if (params.search) {
-    const s = `%${params.search.replace(/[%_\\]/g, ' ')}%`
-    conditions.push(`(p.name LIKE ? OR p.code LIKE ?)`)
+    // nx_normalize é a UDF registrada em client.ts — o equivalente local do
+    // nx_normalize do Postgres. Sem ela, "acucar" não achava "Açúcar" e o
+    // produto parecia não estar cadastrado.
+    const s = `%${normalizeSearchText(params.search).replace(/[%_\\]/g, ' ')}%`
+    conditions.push(`(nx_normalize(p.name) LIKE ? OR p.code LIKE ?)`)
     bindParams.push(s, s)
   }
 

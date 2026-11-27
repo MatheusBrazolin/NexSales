@@ -77,6 +77,17 @@ export interface SyncMeta {
   key: 'products' | 'categories' | 'customers'
   lastSyncAt: string // ISO timestamp
   count: number
+  /**
+   * Marco do sync incremental: maior `updated_at` já baixado desta tabela.
+   * A próxima sincronização pede só o que for mais novo que isto.
+   * Ausente = nunca sincronizou, ou a tabela só faz refresh completo.
+   */
+  cursor?: string
+  /**
+   * Quando o último refresh COMPLETO terminou. O incremental não enxerga
+   * uma linha apagada de vez, então um completo por dia fecha essa brecha.
+   */
+  lastFullSyncAt?: string
 }
 
 class VendasAppDB extends Dexie {

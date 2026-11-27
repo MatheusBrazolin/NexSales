@@ -16,11 +16,17 @@ import {
 } from './sync'
 
 // Build a mock Supabase query builder that is both chainable and awaitable.
+//
+// `range` existe porque o sync passou a paginar: sem ele o mock quebraria
+// na primeira chamada. O mock registra o range pedido para os testes de
+// paginação devolverem a fatia certa.
 function chain(result: { data: unknown; error: unknown }) {
   const obj = {
     select: vi.fn(),
     eq: vi.fn(),
+    gte: vi.fn(),
     order: vi.fn(),
+    range: vi.fn(),
     then(
       resolve: (v: typeof result) => void,
       reject?: (e: unknown) => void,
@@ -33,6 +39,40 @@ function chain(result: { data: unknown; error: unknown }) {
   }
   obj.select.mockReturnValue(obj)
   obj.eq.mockReturnValue(obj)
+  obj.gte.mockReturnValue(obj)
+  obj.order.mockReturnValue(obj)
+  obj.range.mockReturnValue(obj)
+  return obj
+}
+
+/**
+ * Mock que devolve uma fatia real do array por página, como o PostgREST faz.
+ * Usado para provar que o sync não para na primeira página.
+ */
+function pagedChain<T>(rows: T[]) {
+  const calls: Array<[number, number]> = []
+  const obj = {
+    select: vi.fn(),
+    eq: vi.fn(),
+    gte: vi.fn(),
+    order: vi.fn(),
+    range: vi.fn((from: number, to: number) => {
+      calls.push([from, to])
+      current = { data: rows.slice(from, to + 1), error: null }
+      return obj
+    }),
+    then(resolve: (v: unknown) => void, reject?: (e: unknown) => void) {
+      return Promise.resolve(current).then(resolve, reject)
+    },
+    catch(onRejected: (reason: unknown) => void) {
+      return Promise.resolve(current).catch(onRejected)
+    },
+    calls,
+  }
+  let current: { data: unknown; error: unknown } = { data: [], error: null }
+  obj.select.mockReturnValue(obj)
+  obj.eq.mockReturnValue(obj)
+  obj.gte.mockReturnValue(obj)
   obj.order.mockReturnValue(obj)
   return obj
 }
@@ -143,13 +183,14 @@ describe('syncAll', () => {
   })
 
   it('captures a per-entity error without aborting the other syncs', async () => {
-    let call = 0
-    fromMock.mockImplementation(() => {
-      call++
-      // First call (products): throw a real Error so err.message is preserved.
-      if (call === 1) return chain({ data: null, error: new Error('products failed') })
-      return chain({ data: [], error: null })
-    })
+    // Keyed by table, not by call order: o sync de produtos agora lê o
+    // syncMeta antes de falar com o servidor, então a ordem das chamadas
+    // entre as três tabelas não é mais garantida.
+    fromMock.mockImplementation((table: string) =>
+      table === 'products'
+        ? chain({ data: null, error: new Error('products failed') })
+        : chain({ data: [], error: null }),
+    )
 
     const result = await syncAll()
 
@@ -173,5 +214,160 @@ describe('getLastSync', () => {
     expect(meta?.key).toBe('products')
     expect(meta?.count).toBe(1)
     expect(typeof meta?.lastSyncAt).toBe('string')
+  })
+})
+
+describe('syncProducts — paginação', () => {
+  it('busca além das 1000 linhas que o PostgREST devolve por vez', async () => {
+    // 1200 produtos: o `select` solto que existia antes pararia em 1000 e
+    // o caixa nunca encontraria os 200 últimos — sem erro nenhum na tela.
+    const rows = Array.from({ length: 1200 }, (_, i) =>
+      makeProduct({ name: `Produto ${i}`, code: String(i).padStart(4, '0') }),
+    )
+    const paged = pagedChain(rows)
+    fromMock.mockReturnValue(paged)
+
+    const result = await syncProducts()
+
+    expect(result.synced).toBe(1200)
+    expect(await getDB().products.count()).toBe(1200)
+    // Duas páginas: 0–999 (cheia, continua) e 1000–1999 (incompleta, para).
+    expect(paged.calls).toEqual([
+      [0, 999],
+      [1000, 1999],
+    ])
+  })
+})
+
+describe('syncProducts — incremental', () => {
+  /** Deixa o cache no estado de quem já sincronizou uma vez. */
+  async function seedSynced(products: Product[], cursor: string) {
+    const db = getDB()
+    await db.products.bulkPut(products)
+    await db.syncMeta.put({
+      key: 'products',
+      lastSyncAt: cursor,
+      count: products.length,
+      cursor,
+      lastFullSyncAt: new Date().toISOString(),
+    })
+  }
+
+  it('pede só o que mudou depois do marco e preserva o resto do cache', async () => {
+    const antigo = makeProduct({ name: 'Antigo', updated_at: '2026-01-01T00:00:00.000Z' })
+    await seedSynced([antigo], '2026-01-01T00:00:00.000Z')
+
+    const novo = makeProduct({ name: 'Novo', updated_at: '2026-01-02T00:00:00.000Z' })
+    const builder = chain({ data: [novo], error: null })
+    fromMock.mockReturnValue(builder)
+
+    const result = await syncProducts()
+
+    expect(result.mode).toBe('incremental')
+    expect(result.synced).toBe(1)
+    // O produto antigo continua lá: incremental não limpa a tabela.
+    const stored = await getDB().products.toArray()
+    expect(stored.map((p) => p.name).sort()).toEqual(['Antigo', 'Novo'])
+    // Pediu por updated_at, não baixou o catálogo inteiro.
+    expect(builder.gte).toHaveBeenCalledWith('updated_at', expect.any(String))
+  })
+
+  it('volta alguns segundos no marco, para não perder escrita demorada', async () => {
+    await seedSynced([makeProduct()], '2026-01-01T00:00:10.000Z')
+    const builder = chain({ data: [], error: null })
+    fromMock.mockReturnValue(builder)
+
+    await syncProducts()
+
+    const [, since] = builder.gte.mock.calls[0] as [string, string]
+    expect(Date.parse(since)).toBe(Date.parse('2026-01-01T00:00:10.000Z') - 5_000)
+  })
+
+  it('apaga do cache o produto que foi desativado', async () => {
+    const produto = makeProduct({ name: 'Saiu de linha', updated_at: '2026-01-01T00:00:00.000Z' })
+    await seedSynced([produto], '2026-01-01T00:00:00.000Z')
+
+    fromMock.mockReturnValue(
+      chain({
+        data: [{ ...produto, is_active: false, updated_at: '2026-01-02T00:00:00.000Z' }],
+        error: null,
+      }),
+    )
+
+    const result = await syncProducts()
+
+    expect(result.synced).toBe(1)
+    // Sem isso ele seguiria vendável no PDV até o refresh completo do dia seguinte.
+    expect(await getDB().products.count()).toBe(0)
+  })
+
+  it('avança o marco para o updated_at mais novo que baixou', async () => {
+    await seedSynced([makeProduct()], '2026-01-01T00:00:00.000Z')
+    fromMock.mockReturnValue(
+      chain({
+        data: [
+          makeProduct({ updated_at: '2026-01-03T00:00:00.000Z' }),
+          makeProduct({ updated_at: '2026-01-02T00:00:00.000Z' }),
+        ],
+        error: null,
+      }),
+    )
+
+    await syncProducts()
+
+    expect((await getLastSync('products'))?.cursor).toBe('2026-01-03T00:00:00.000Z')
+  })
+
+  it('mantém o marco quando não veio nada novo', async () => {
+    await seedSynced([makeProduct()], '2026-01-01T00:00:00.000Z')
+    fromMock.mockReturnValue(chain({ data: [], error: null }))
+
+    await syncProducts()
+
+    expect((await getLastSync('products'))?.cursor).toBe('2026-01-01T00:00:00.000Z')
+  })
+
+  it('cai para refresh completo quando o último completo passou de um dia', async () => {
+    const db = getDB()
+    await db.products.bulkPut([makeProduct({ name: 'Velho' })])
+    await db.syncMeta.put({
+      key: 'products',
+      lastSyncAt: '2026-01-01T00:00:00.000Z',
+      count: 1,
+      cursor: '2026-01-01T00:00:00.000Z',
+      lastFullSyncAt: new Date(Date.now() - 25 * 60 * 60_000).toISOString(),
+    })
+    fromMock.mockReturnValue(chain({ data: [makeProduct({ name: 'Fresco' })], error: null }))
+
+    const result = await syncProducts()
+
+    // O completo é o que elimina do cache um produto apagado de vez no servidor.
+    expect(result.mode).toBe('full')
+    expect((await getDB().products.toArray()).map((p) => p.name)).toEqual(['Fresco'])
+  })
+
+  it('cai para refresh completo quando o cache local está vazio', async () => {
+    await getDB().syncMeta.put({
+      key: 'products',
+      lastSyncAt: '2026-01-01T00:00:00.000Z',
+      count: 10,
+      cursor: '2026-01-01T00:00:00.000Z',
+      lastFullSyncAt: new Date().toISOString(),
+    })
+    fromMock.mockReturnValue(chain({ data: [makeProduct()], error: null }))
+
+    const result = await syncProducts()
+
+    expect(result.mode).toBe('full')
+  })
+
+  it('force: true pede o completo mesmo com marco válido', async () => {
+    await seedSynced([makeProduct({ name: 'Velho' })], '2026-01-01T00:00:00.000Z')
+    fromMock.mockReturnValue(chain({ data: [makeProduct({ name: 'Fresco' })], error: null }))
+
+    const result = await syncProducts({ force: true })
+
+    expect(result.mode).toBe('full')
+    expect((await getDB().products.toArray()).map((p) => p.name)).toEqual(['Fresco'])
   })
 })

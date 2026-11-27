@@ -1,5 +1,6 @@
 import 'server-only'
 import { initSchema } from './schema'
+import { normalizeSearchText } from '@/lib/utils/search-text'
 
 export function isElectron(): boolean {
   return process.env.ELECTRON_APP === 'true'
@@ -23,6 +24,12 @@ export interface NxDB {
   pragma(source: string, simplify?: boolean): unknown
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transaction(fn: (...args: any[]) => any): (...args: any[]) => any
+  /** Registra uma função SQL escrita em JS (better-sqlite3). */
+  function(
+    name: string,
+    options: { deterministic?: boolean; varargs?: boolean },
+    fn: (...args: unknown[]) => unknown,
+  ): void
   close(): void
 }
 
@@ -41,6 +48,14 @@ export function getDb(): NxDB {
   _db = new Database(dbPath)
   _db.pragma('journal_mode = WAL')
   _db.pragma('foreign_keys = ON')
+
+  // Mesma normalização do Postgres (nx_normalize) e do cache offline, para
+  // a busca do desktop achar "Açúcar" quando o operador digita "acucar".
+  // O SQLite não tem unaccent; com a UDF, a regra fica escrita num lugar só.
+  _db.function('nx_normalize', { deterministic: true }, (value: unknown) =>
+    typeof value === 'string' ? normalizeSearchText(value) : null,
+  )
+
   initSchema(_db)
 
   return _db
