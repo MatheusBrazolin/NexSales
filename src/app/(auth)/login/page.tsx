@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, AlertCircle, Eye, EyeOff, ArrowLeft, Plus, ShoppingBag, WifiOff } from 'lucide-react'
+import { Loader2, AlertCircle, Eye, EyeOff, ArrowLeft, Plus, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,7 +16,6 @@ import {
   saveProfile,
   removeProfile,
   getInitials,
-  getAvatarGradient,
   type RecentProfile,
 } from '@/lib/utils/recent-profiles'
 
@@ -119,14 +118,12 @@ function LoginPageContent() {
   /* ── Mode: profile selection ─────────────────────────────────────── */
   if (mode === 'profiles') {
     return (
-      <div className="w-full max-w-xs">
-        <MobileBrand />
-
+      <div className="w-full">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900 font-heading">
+          <h1 className="font-heading text-2xl font-semibold tracking-tight text-slate-900">
             Quem está acessando?
-          </h2>
-          <p className="mt-2 text-sm text-slate-500">Selecione seu perfil para continuar.</p>
+          </h1>
+          <p className="mt-1.5 text-sm text-slate-500">Toque no seu perfil.</p>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
@@ -137,7 +134,7 @@ function LoginPageContent() {
                 className="w-full flex flex-col items-center gap-2.5 p-3 rounded-2xl hover:bg-slate-50 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 <div
-                  className={`h-16 w-16 rounded-2xl bg-gradient-to-br ${getAvatarGradient(profile.username)} flex items-center justify-center text-white text-xl font-bold shadow-md group-hover:scale-105 group-hover:shadow-lg group-hover:shadow-primary/20 transition-all`}
+                  className="grid h-16 w-16 place-items-center rounded-xl bg-slate-100 text-xl font-semibold text-slate-600 ring-1 ring-slate-200 transition-colors group-hover:bg-slate-200/70 group-hover:text-slate-900" 
                 >
                   {getInitials(profile.username)}
                 </div>
@@ -165,9 +162,7 @@ function LoginPageContent() {
   /* ── Mode: password for selected profile ────────────────────────── */
   if (mode === 'profile-password' && selected) {
     return (
-      <div className="w-full max-w-xs">
-        <MobileBrand />
-
+      <div className="w-full">
         <button
           onClick={() => setMode('profiles')}
           className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors mb-8 -ml-1"
@@ -178,7 +173,7 @@ function LoginPageContent() {
 
         <div className="flex flex-col items-center mb-8">
           <div
-            className={`h-20 w-20 rounded-3xl bg-gradient-to-br ${getAvatarGradient(selected)} flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-primary/20`}
+            className="grid h-16 w-16 place-items-center rounded-xl bg-slate-100 text-2xl font-semibold text-slate-600 ring-1 ring-slate-200" 
           >
             {getInitials(selected)}
           </div>
@@ -219,10 +214,7 @@ function LoginPageContent() {
 
           <Button
             type="submit"
-            className="w-full h-11 font-semibold shadow-sm shadow-primary/20 transition-all"
-            style={{
-              background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-            }}
+            className="h-11 w-full font-semibold"
             disabled={!profilePwd || isSubmitting}
           >
             {isSubmitting ? (
@@ -248,8 +240,6 @@ function LoginPageContent() {
   /* ── Mode: full form ─────────────────────────────────────────────── */
   return (
     <div className="w-full max-w-sm">
-      <MobileBrand />
-
       {profiles.length > 0 && (
         <button
           onClick={() => setMode('profiles')}
@@ -261,12 +251,11 @@ function LoginPageContent() {
       )}
 
       <div className="mb-8">
-        <h2 className="text-3xl font-bold tracking-tight text-slate-900 font-heading">
-          Bem-vindo ao{' '}
-          <span className="text-primary">NexSales</span>
-        </h2>
-        <p className="mt-2 text-slate-500 text-sm leading-relaxed">
-          Faça login para continuar.
+        <h1 className="font-heading text-2xl font-semibold tracking-tight text-slate-900">
+          Entrar
+        </h1>
+        <p className="mt-1.5 text-sm text-slate-500">
+          Use seu usuário ou o e-mail cadastrado.
         </p>
       </div>
 
@@ -367,20 +356,6 @@ function LoginPageContent() {
  * scope: defining it inside the page component would create a brand-new
  * component type on every render, remounting it and dropping focus.
  */
-function MobileBrand() {
-  return (
-    <div className="flex lg:hidden items-center gap-2.5 mb-10">
-      <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20">
-        <ShoppingBag className="h-5 w-5 text-white" strokeWidth={2} />
-      </div>
-      <div className="flex flex-col leading-tight">
-        <span className="font-bold text-slate-900">NexSales</span>
-        <span className="text-[9px] uppercase tracking-widest text-slate-400">Smart Sales</span>
-      </div>
-    </div>
-  )
-}
-
 export default function LoginPage() {
   return (
     <Suspense>
