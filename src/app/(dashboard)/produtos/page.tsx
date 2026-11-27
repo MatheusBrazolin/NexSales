@@ -132,7 +132,11 @@ export default async function ProdutosPage({
         </Button>
       </div>
 
-      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-slate-200/80 dark:border-white/8 dark:bg-slate-800/60 shadow-sm">
+      {/* `max-h-full` e não `flex-1`: com poucos produtos o card abraça o
+          conteúdo, e só quando a lista passa da altura disponível ele trava
+          e a tabela rola por dentro. Esticar à força deixaria um vazio
+          enorme embaixo de cinco linhas. */}
+      <Card className="flex min-h-0 max-h-full flex-col overflow-hidden border-slate-200/80 dark:border-white/8 dark:bg-slate-800/60 shadow-sm">
         {/* Filters bar */}
         <form className="p-4 border-b border-slate-100 dark:border-white/5 grid grid-cols-1 sm:grid-cols-12 gap-3">
           <div className="sm:col-span-5 relative">
