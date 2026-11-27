@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Plus, Package, Search } from 'lucide-react'
+import { Plus, Package, Search, Tags } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -124,12 +124,23 @@ export default async function ProdutosPage({
             {search ? ` para "${search}"` : ''}
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          {/* Gerenciar categorias é manutenção rara — não merece lugar no
+              menu principal, ao lado de telas abertas 50 vezes por dia.
+              Fica aqui, onde a necessidade aparece: olhando o catálogo. */}
+          <Button asChild variant="ghost" className="text-slate-600 dark:text-slate-400">
+            <Link href="/produtos/categorias">
+              <Tags className="mr-1.5 h-4 w-4" />
+              Categorias
+            </Link>
+          </Button>
         <Button asChild className="bg-primary hover:bg-primary/90 text-white shadow-sm">
           <Link href="/produtos/novo">
             <Plus className="mr-1.5 h-4 w-4" />
             Novo Produto
           </Link>
         </Button>
+        </div>
       </div>
 
       {/* `max-h-full` e não `flex-1`: com poucos produtos o card abraça o

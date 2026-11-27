@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import {
+  ChevronDown,
   Loader2,
   CheckCircle2,
   ShoppingCart,
@@ -941,6 +942,39 @@ export function PDV({ avulsoProduct, pixEnabled = false }: PDVProps) {
                 </div>
               )}
 
+              {/* Desconto e observação são EXCEÇÕES, não o caminho de toda
+                  venda. Sentados no meio do fluxo, empurravam o total e o
+                  botão de confirmar para baixo em todo atendimento.
+
+                  "Separate the fast 'scan, pay, go' path from advanced
+                  actions like complex discounts or manual overrides, so
+                  routine sales stay quick" — regra 4 do docs/design.md.
+
+                  `<details>` nativo: abre por teclado, não precisa de
+                  JavaScript e não quebra se o script falhar. */}
+              <details className="group rounded-lg border border-slate-200 dark:border-white/10">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium text-slate-600 marker:content-none hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200">
+                  <span className="flex items-center gap-1.5">
+                    <TicketPercent className="h-3.5 w-3.5" aria-hidden />
+                    Desconto e observações
+                  </span>
+                  <span className="flex items-center gap-2">
+                    {/* Desconto aplicado tem de aparecer MESMO recolhido:
+                        um abatimento escondido é dinheiro saindo sem
+                        ninguém ver. */}
+                    {discount > 0 && (
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-400">
+                        −{formatCurrency(discount)}
+                      </span>
+                    )}
+                    <ChevronDown
+                      className="h-4 w-4 transition-transform group-open:rotate-180"
+                      aria-hidden
+                    />
+                  </span>
+                </summary>
+
+                <div className="space-y-3 border-t border-slate-200 p-3 dark:border-white/10">
               <div className="space-y-1.5">
                 <Label htmlFor="notes" className="text-xs font-medium text-slate-700 dark:text-slate-300">
                   Observações
@@ -985,6 +1019,8 @@ export function PDV({ avulsoProduct, pixEnabled = false }: PDVProps) {
                   </p>
                 )}
               </div>
+                </div>
+              </details>
 
               <div className="rounded-lg bg-slate-900 dark:bg-slate-950/80 dark:border dark:border-white/8 text-white p-4">
                 <div className="flex items-center justify-between text-xs text-slate-400">

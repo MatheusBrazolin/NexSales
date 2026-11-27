@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   Package,
   ShoppingCart,
-  Tags,
   ShoppingBag,
   Users,
   ShieldAlert,
@@ -46,7 +45,6 @@ const navSections: NavSection[] = [
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
       { href: '/produtos', label: 'Produtos', icon: Package, adminOnly: true },
-      { href: '/produtos/categorias', label: 'Categorias', icon: Tags, adminOnly: true },
     ],
   },
   {
