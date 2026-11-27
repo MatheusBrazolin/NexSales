@@ -13,7 +13,6 @@ import {
 } from 'lucide-react'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { formatCurrency } from '@/lib/utils/format'
-import { staggerContainer, useMotionVariants } from '@/lib/motion'
 
 interface KpiCardsProps {
   todayTotal: number
@@ -67,18 +66,6 @@ function TrendBadge({ trend, label }: { trend: Trend; label: string }) {
   )
 }
 
-const containerBase = staggerContainer(0.08)
-
-const cardBase = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const },
-  },
-}
-
 export function KpiCards({
   todayTotal,
   monthTotal,
@@ -87,9 +74,6 @@ export function KpiCards({
   todayCount,
   monthCount,
 }: KpiCardsProps) {
-  const containerVariants = useMotionVariants(containerBase)
-  const cardVariants = useMotionVariants(cardBase)
-
   const cards: KpiCard[] = [
     {
       title: 'Vendas Hoje',
@@ -142,20 +126,18 @@ export function KpiCards({
   ]
 
   return (
-    <motion.div
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      {cards.map((card) => {
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {cards.map((card, index) => {
         const Icon = card.icon
         return (
+          // Entrance in CSS so the cards are visible in the server HTML;
+          // framer-motion stays only for the hover lift, which can only
+          // happen after hydration anyway.
           <motion.div
             key={card.title}
-            variants={cardVariants}
+            style={{ '--nx-index': index } as React.CSSProperties}
             whileHover={{ y: -3, transition: { duration: 0.2 } }}
-            className="relative overflow-hidden rounded-xl border border-slate-200/60 dark:border-white/8 bg-white/80 dark:bg-slate-800/70 backdrop-blur-sm shadow-sm dark:shadow-black/30 hover:shadow-md dark:hover:shadow-black/40 transition-shadow cursor-default"
+            className="nx-enter-rise nx-stagger [--nx-stagger:80ms] relative overflow-hidden rounded-xl border border-slate-200/60 dark:border-white/8 bg-white/80 dark:bg-slate-800/70 backdrop-blur-sm shadow-sm dark:shadow-black/30 hover:shadow-md dark:hover:shadow-black/40 transition-shadow cursor-default"
           >
             {/* Accent top bar */}
             <span
@@ -191,6 +173,6 @@ export function KpiCards({
           </motion.div>
         )
       })}
-    </motion.div>
+    </div>
   )
 }

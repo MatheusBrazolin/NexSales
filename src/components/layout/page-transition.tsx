@@ -1,27 +1,24 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { fadeUp, useMotionVariants } from '@/lib/motion'
 
 /**
  * Fades each route into place.
  *
- * Next.js already streams pages in, but without a transition the swap is
- * abrupt enough that it reads as a flash rather than as navigation — most
- * noticeably in the Electron build, where there is no browser chrome to
- * signal that anything moved.
+ * Deliberately CSS, not framer-motion. A JS-driven `initial="hidden"` here
+ * would ship every page to the browser as `opacity: 0` and leave the whole
+ * app blank until hydration finished — on a slow phone that is a few seconds
+ * of nothing, and if hydration ever fails it is permanent.
  *
- * Keyed on the pathname so every navigation replays the entrance, and kept
- * deliberately short: this sits between the operator and their next action.
+ * The `key` restarts the animation on every navigation: React swaps the
+ * element, the browser sees a fresh node and replays the keyframes.
  */
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const variants = useMotionVariants(fadeUp)
 
   return (
-    <motion.div key={pathname} variants={variants} initial="hidden" animate="visible">
+    <div key={pathname} className="nx-enter-fade-up">
       {children}
-    </motion.div>
+    </div>
   )
 }

@@ -22,7 +22,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
-import { slideInLeft, spring, staggerContainer, useMotionVariants } from '@/lib/motion'
+import { spring } from '@/lib/motion'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import type { UserRole } from '@/types/database'
 
@@ -126,8 +126,6 @@ interface NavListProps {
 
 function NavList({ role, onNavigate, isMobile }: NavListProps) {
   const pathname = usePathname()
-  const sectionVariants = useMotionVariants(staggerContainer(0.045))
-  const itemVariants = useMotionVariants(slideInLeft)
 
   const visibleSections = navSections
     .map((section) => ({
@@ -143,22 +141,24 @@ function NavList({ role, onNavigate, isMobile }: NavListProps) {
   return (
     <nav className="flex-1 px-3 py-5 space-y-6 overflow-y-auto">
       {visibleSections.map((section) => (
-        <motion.div
-          key={section.title}
-          variants={sectionVariants}
-          initial="hidden"
-          animate="visible"
-        >
+        <div key={section.title}>
           <p className="px-3 mb-2 text-[10px] font-semibold tracking-[0.12em] uppercase text-slate-500">
             {section.title}
           </p>
           <ul className="space-y-0.5">
-            {section.items.map((item) => {
+            {section.items.map((item, index) => {
               const Icon = item.icon
               const isActive = isItemActive(item.href, pathname)
 
               return (
-                <motion.li key={item.href} className="relative" variants={itemVariants}>
+                <li
+                  key={item.href}
+                  // The cascade comes from a CSS delay driven by the item's
+                  // own position, so no orchestrator has to be alive for the
+                  // links to be visible.
+                  style={{ '--nx-index': index } as React.CSSProperties}
+                  className="nx-enter-slide-left nx-stagger relative"
+                >
                   <AnimatePresence>
                     {isActive && (
                       <motion.span
@@ -188,11 +188,11 @@ function NavList({ role, onNavigate, isMobile }: NavListProps) {
                     />
                     <span>{item.label}</span>
                   </Link>
-                </motion.li>
+                </li>
               )
             })}
           </ul>
-        </motion.div>
+        </div>
       ))}
     </nav>
   )
@@ -258,16 +258,14 @@ interface SidebarProps {
 
 export function Sidebar({ role }: SidebarProps) {
   return (
-    <motion.aside
-      initial={{ x: -20, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="hidden md:flex w-64 min-h-screen bg-slate-900 text-slate-100 flex-col border-r border-slate-800"
-    >
+    // Entrance in CSS: with framer-motion the whole sidebar shipped as
+    // opacity:0 in the server HTML and only appeared once the bundle had
+    // hydrated — the navigation of the app, invisible until then.
+    <aside className="nx-enter-slide-left hidden md:flex w-64 min-h-screen bg-slate-900 text-slate-100 flex-col border-r border-slate-800">
       <SidebarBrand />
       <NavList role={role} />
       <SidebarFooter role={role} />
-    </motion.aside>
+    </aside>
   )
 }
 

@@ -344,3 +344,101 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   Animações de entrada
+   ──────────────────────────────────────────────────────────────────────
+   Estas existem em CSS, e não em JavaScript, por um motivo específico.
+
+   Quando a entrada é feita com framer-motion e `initial="hidden"`, o HTML
+   que o servidor manda já sai com `style="opacity:0"`. O elemento só fica
+   visível depois que o bundle carrega e a biblioteca hidrata. Num celular
+   lento no balcão isso é a tela em branco por segundos; se a hidratação
+   falhar, é a tela em branco para sempre.
+
+   Em CSS, o conteúdo vai visível no HTML e a animação roda na primeira
+   pintura, sem depender de JavaScript nenhum. O bloco de
+   prefers-reduced-motion mais abaixo zera tudo isto.
+
+   framer-motion continua sendo a ferramenta certa para o que só existe
+   depois de uma interação — item entrando no carrinho, overlay de venda
+   confirmada, resultado de busca — porque aí a hidratação já aconteceu. */
+
+@keyframes nx-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes nx-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nx-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes nx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@layer utilities {
+  .nx-enter-fade-up,
+  .nx-enter-fade,
+  .nx-enter-slide-left,
+  .nx-enter-rise {
+    /* `backwards` aplica o frame inicial durante o atraso — sem isso, um
+       item com delay pisca visível antes de começar a animar. */
+    animation-fill-mode: backwards;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    animation-duration: 0.22s;
+  }
+
+  .nx-enter-fade-up {
+    animation-name: nx-fade-up;
+  }
+
+  .nx-enter-fade {
+    animation-name: nx-fade-in;
+  }
+
+  .nx-enter-slide-left {
+    animation-name: nx-slide-in-left;
+  }
+
+  .nx-enter-rise {
+    animation-name: nx-rise;
+    animation-duration: 0.4s;
+  }
+
+  /* Escalonamento: o elemento declara a própria posição na fila com
+     style={{ '--nx-index': n }} e o atraso sai daí. Mantém o efeito de
+     cascata sem precisar de um orquestrador em JavaScript. */
+  .nx-stagger {
+    animation-delay: calc(var(--nx-index, 0) * var(--nx-stagger, 45ms));
+  }
+}
