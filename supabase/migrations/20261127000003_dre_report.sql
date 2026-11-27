@@ -10,6 +10,9 @@
 --
 -- Esta funcao devolve tudo pronto num unico jsonb. INVOKER de proposito:
 -- as policies de RLS continuam valendo.
+--
+-- Roda DEPOIS de 20261127000002_sale_discount.sql, porque le
+-- sales.discount_amount, que e criada la.
 -- ============================================================
 
 create or replace function public.dre_report(

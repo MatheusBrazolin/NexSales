@@ -14,6 +14,21 @@ da lista abaixo não aparece em nenhum lint, nenhum teste e nenhum build.
 Os 14 achados foram corrigidos. `npm run lint`, `npm run typecheck`,
 199 testes e `next build` passando; cobertura 28,1% → **29,7%**.
 
+As 19 migrations também foram aplicadas do zero contra um Postgres 15 real
+(container descartável, com um stub mínimo do ambiente Supabase: schema
+`auth`, `auth.uid()` e os papéis). Isso encontrou dois erros que fariam o
+`supabase db push` quebrar no meio:
+
+- `dre_report` lia `sales.discount_amount`, coluna criada só na migration
+  seguinte — os dois arquivos foram renumerados;
+- `dashboard_comparisons` fazia `create or replace` mudando o tipo de
+  retorno da função, o que o Postgres recusa (`cannot change return type of
+  existing function`) — passou a derrubar a versão anterior antes.
+
+Depois disso as funções foram exercitadas com dados: venda com desconto,
+brinde a R$ 0,00 (que não vira preço de catálogo), desconto maior que a
+venda, idempotência por `client_uuid`, e item sem controle de estoque.
+
 | # | Achado | Correção |
 |---|---|---|
 | 1 | Relatório de lucro quebrado | ExportButtons recebe o CSV pronto |

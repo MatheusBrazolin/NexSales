@@ -14,7 +14,12 @@
 -- periodo do mes passado, para o app calcular a variacao de verdade.
 -- ============================================================
 
-create or replace function public.dashboard_metrics()
+-- CREATE OR REPLACE nao consegue mudar a assinatura de saida de uma funcao
+-- ("cannot change return type of existing function"), e esta ganha duas
+-- colunas OUT em relacao a versao de 20261127000001. Por isso o drop antes.
+drop function if exists public.dashboard_metrics();
+
+create function public.dashboard_metrics()
 returns table (
   today_total      numeric,
   today_count      bigint,
