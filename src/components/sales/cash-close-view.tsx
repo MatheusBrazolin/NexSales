@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ExportButtons } from '@/components/reports/export-buttons'
+import { useLightPrint } from '@/hooks/use-light-print'
 import { buildCsvReport } from '@/lib/utils/csv'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -25,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { formatCurrency, PAYMENT_LABELS } from '@/lib/utils/format'
+import { formatCurrency, PAYMENT_LABELS, formatPercent } from '@/lib/utils/format'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import type { CashCloseSummary, SaleItemSummary } from '@/lib/queries/cash-close'
@@ -66,6 +67,7 @@ interface CashCloseViewProps {
 }
 
 export function CashCloseView({ summary }: CashCloseViewProps) {
+  useLightPrint()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
@@ -159,20 +161,20 @@ export function CashCloseView({ summary }: CashCloseViewProps) {
         </Button>
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+            <h1 className="text-2xl font-semibold text-slate-900 tracking-tight dark:text-slate-100">
               Fechamento de Caixa
             </h1>
-            <p className="text-sm text-slate-500 mt-1 capitalize">{displayDate}</p>
+            <p className="text-sm text-slate-500 mt-1 first-letter:uppercase dark:text-slate-400 dark:text-slate-500">{displayDate}</p>
           </div>
           <div className="flex flex-wrap gap-2 items-center">
             <div className="relative">
-              <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+              <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none dark:text-slate-500" />
               <input
                 type="date"
                 value={summary.date}
                 onChange={(e) => handleDateChange(e.target.value)}
                 disabled={isPending}
-                className="h-10 pl-9 pr-3 border border-slate-200 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="h-10 pl-9 pr-3 border border-slate-200 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary dark:border-white/10 dark:bg-slate-800/60"
               />
             </div>
             {/* PDF here goes through the desktop bridge / print dialog below,
@@ -203,7 +205,7 @@ export function CashCloseView({ summary }: CashCloseViewProps) {
             <Button
               onClick={handleSavePdf}
               variant="outline"
-              className="border-slate-200 text-slate-700 hover:bg-slate-50"
+              className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
             >
               <FileDown className="mr-1.5 h-4 w-4" />
               Salvar PDF
@@ -223,7 +225,7 @@ export function CashCloseView({ summary }: CashCloseViewProps) {
         {/* Print-only header */}
         <div className="hidden print:block text-center pb-4 border-b border-slate-300">
           <h1 className="text-xl font-bold">Fechamento de Caixa</h1>
-          <p className="text-sm capitalize mt-1">{displayDate}</p>
+          <p className="text-sm first-letter:uppercase mt-1">{displayDate}</p>
         </div>
 
         {/* KPI cards */}
@@ -249,15 +251,15 @@ export function CashCloseView({ summary }: CashCloseViewProps) {
         </div>
 
         {/* By payment method */}
-        <Card className="border-slate-200/80 shadow-sm">
+        <Card className="border-slate-200/80 shadow-sm dark:border-white/8">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-slate-900">
+            <CardTitle className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               Recebimento por método
             </CardTitle>
           </CardHeader>
           <CardContent>
             {summary.byPayment.length === 0 ? (
-              <p className="text-sm text-slate-400">Nenhuma venda registrada nesse dia.</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500">Nenhuma venda registrada nesse dia.</p>
             ) : (
               <div className="space-y-3">
                 {summary.byPayment.map((p) => {
@@ -268,23 +270,23 @@ export function CashCloseView({ summary }: CashCloseViewProps) {
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                           <span className={`h-2 w-2 rounded-full ${style.dot}`} />
-                          <span className="text-sm font-medium text-slate-900">
+                          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
                             {PAYMENT_LABELS[p.method]}
                           </span>
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
                             ({p.count} {p.count === 1 ? 'venda' : 'vendas'})
                           </span>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-semibold text-slate-900 tabular-nums">
+                          <p className="text-sm font-semibold text-slate-900 tabular-nums dark:text-slate-100">
                             {formatCurrency(p.total)}
                           </p>
-                          <p className="text-[11px] text-slate-500 tabular-nums">
-                            {pct.toFixed(1)}%
+                          <p className="text-[11px] text-slate-500 tabular-nums dark:text-slate-400 dark:text-slate-500">
+                            {formatPercent(pct)}
                           </p>
                         </div>
                       </div>
-                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden dark:bg-white/10">
                         <div
                           className={`h-full ${style.bar} transition-all`}
                           style={{ width: `${pct}%` }}
@@ -299,28 +301,28 @@ export function CashCloseView({ summary }: CashCloseViewProps) {
         </Card>
 
         {/* Sales list */}
-        <Card className="border-slate-200/80 shadow-sm">
+        <Card className="border-slate-200/80 shadow-sm dark:border-white/8">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-slate-900">
+            <CardTitle className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               Vendas do dia ({summary.count})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent border-slate-100">
-                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 h-11 pl-3 sm:pl-6 w-16 sm:w-20">
+                <TableRow className="hover:bg-transparent border-slate-100 dark:border-white/5">
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 h-11 pl-3 sm:pl-6 w-16 sm:w-20 dark:text-slate-400 dark:text-slate-500">
                     Hora
                   </TableHead>
                   {/* "Pagamento" some no mobile — o badge aparece embaixo
                       da hora pra economizar largura. */}
-                  <TableHead className="hidden sm:table-cell text-xs font-semibold uppercase tracking-wide text-slate-500 w-36">
+                  <TableHead className="hidden sm:table-cell text-xs font-semibold uppercase tracking-wide text-slate-500 w-36 dark:text-slate-400 dark:text-slate-500">
                     Pagamento
                   </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 dark:text-slate-500">
                     Itens
                   </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 text-right pr-3 sm:pr-6 w-24 sm:w-32">
+                  <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 text-right pr-3 sm:pr-6 w-24 sm:w-32 dark:text-slate-400 dark:text-slate-500">
                     Total
                   </TableHead>
                 </TableRow>
@@ -328,7 +330,7 @@ export function CashCloseView({ summary }: CashCloseViewProps) {
               <TableBody>
                 {summary.sales.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={4} className="text-center py-10 text-sm text-slate-400">
+                    <TableCell colSpan={4} className="text-center py-10 text-sm text-slate-400 dark:text-slate-500">
                       Sem vendas nesse dia.
                     </TableCell>
                   </TableRow>
@@ -336,8 +338,8 @@ export function CashCloseView({ summary }: CashCloseViewProps) {
                   summary.sales.map((sale) => {
                     const style = PAYMENT_STYLES[sale.payment_method]
                     return (
-                      <TableRow key={sale.id} className="border-slate-100 align-top">
-                        <TableCell className="pl-3 sm:pl-6 pt-3 text-sm text-slate-600 tabular-nums">
+                      <TableRow key={sale.id} className="border-slate-100 align-top dark:border-white/5">
+                        <TableCell className="pl-3 sm:pl-6 pt-3 text-sm text-slate-600 tabular-nums dark:text-slate-400 dark:text-slate-500">
                           <div>{format(new Date(sale.created_at), 'HH:mm')}</div>
                           <div className="sm:hidden mt-1">
                             <span
@@ -359,7 +361,7 @@ export function CashCloseView({ summary }: CashCloseViewProps) {
                         <TableCell className="py-3">
                           <ItemsList items={sale.items} notes={sale.notes} />
                         </TableCell>
-                        <TableCell className="text-right pr-3 sm:pr-6 pt-3 font-semibold text-slate-900 tabular-nums">
+                        <TableCell className="text-right pr-3 sm:pr-6 pt-3 font-semibold text-slate-900 tabular-nums dark:text-slate-100">
                           {formatCurrency(sale.total_amount)}
                         </TableCell>
                       </TableRow>
@@ -403,9 +405,9 @@ function KpiCard({
   tone: Tone
 }) {
   return (
-    <Card className="border-slate-200/80 shadow-sm">
+    <Card className="border-slate-200/80 shadow-sm dark:border-white/8">
       <CardContent className="pt-5">
-        <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+        <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400 dark:text-slate-500">
           <span
             className={`h-7 w-7 rounded-md inline-flex items-center justify-center ring-1 ring-inset ${TONE_STYLES[tone]}`}
           >
@@ -413,7 +415,7 @@ function KpiCard({
           </span>
           {label}
         </div>
-        <p className="mt-2 text-2xl font-bold text-slate-900 tabular-nums">{value}</p>
+        <p className="mt-2 text-2xl font-bold text-slate-900 tabular-nums dark:text-slate-100">{value}</p>
       </CardContent>
     </Card>
   )
@@ -432,7 +434,7 @@ function ItemsList({
   notes: string | null
 }) {
   if (items.length === 0) {
-    return <span className="text-sm text-slate-400">—</span>
+    return <span className="text-sm text-slate-400 dark:text-slate-500">—</span>
   }
 
   return (
@@ -442,17 +444,17 @@ function ItemsList({
           key={`${item.productCode}-${idx}`}
           className="flex items-start gap-2 text-sm leading-snug"
         >
-          <span className="inline-flex items-center justify-center min-w-7 h-5 px-1.5 rounded bg-slate-100 text-slate-700 text-xs font-semibold tabular-nums">
+          <span className="inline-flex items-center justify-center min-w-7 h-5 px-1.5 rounded bg-slate-100 text-slate-700 text-xs font-semibold tabular-nums dark:text-slate-300 dark:bg-white/10">
             {item.quantity}×
           </span>
-          <span className="flex-1 text-slate-800 break-words">{item.productName}</span>
-          <span className="text-slate-500 tabular-nums text-xs whitespace-nowrap">
+          <span className="flex-1 text-slate-800 break-words dark:text-slate-200">{item.productName}</span>
+          <span className="text-slate-500 tabular-nums text-xs whitespace-nowrap dark:text-slate-400 dark:text-slate-500">
             {formatCurrency(item.subtotal)}
           </span>
         </div>
       ))}
       {notes && (
-        <p className="pt-1 text-xs italic text-slate-500 border-t border-slate-100 mt-1.5">
+        <p className="pt-1 text-xs italic text-slate-500 border-t border-slate-100 mt-1.5 dark:border-white/5 dark:text-slate-400 dark:text-slate-500">
           Obs: {notes}
         </p>
       )}

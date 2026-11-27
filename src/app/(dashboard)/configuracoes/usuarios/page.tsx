@@ -1,5 +1,6 @@
 import { ShieldCheck, User as UserIcon, Users } from 'lucide-react'
 import { Card } from '@/components/ui/card'
+import { LoadError } from '@/components/ui/load-error'
 import {
   Table,
   TableBody,
@@ -103,11 +104,7 @@ export default async function UsuariosPage() {
       </div>
 
       <Card className="border-slate-200/80 dark:border-white/8 dark:bg-slate-800/60 shadow-sm overflow-hidden">
-        {error ? (
-          <div className="p-6 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border-b border-red-100 dark:border-red-500/20">
-            Erro ao carregar usuários: {error.message}
-          </div>
-        ) : null}
+        {error ? <LoadError what="os usuários" error={error} /> : null}
 
         <div className="overflow-x-auto">
           <Table>

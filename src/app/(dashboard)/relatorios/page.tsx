@@ -3,7 +3,7 @@ import { TrendingUp, TrendingDown, ShoppingCart, DollarSign, Percent, TicketPerc
 import { Card } from '@/components/ui/card'
 import { requireAdmin } from '@/lib/auth/roles'
 import { getDREReport, PERIOD_LABELS, type DREPeriod, type DREResult } from '@/lib/queries/dre'
-import { formatCurrency } from '@/lib/utils/format'
+import { formatCurrency, formatPercent } from '@/lib/utils/format'
 import { PAYMENT_LABELS } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 import { tryQuery } from '@/lib/supabase/try-query'
@@ -156,7 +156,7 @@ export default async function RelatoriosPage({
         />
         <KpiCard label="Custo" value={formatCurrency(dre.cost)} icon={TrendingDown} accent={dre.cost > 0 ? 'red' : 'slate'} sub="custo de produto (aprox.)" />
         <KpiCard label="Lucro bruto" value={formatCurrency(dre.grossProfit)} icon={TrendingUp} accent={dre.grossProfit >= 0 ? 'green' : 'red'} />
-        <KpiCard label="Margem bruta" value={`${dre.grossMargin.toFixed(1)}%`} icon={Percent} accent={marginColor} />
+        <KpiCard label="Margem bruta" value={formatPercent(dre.grossMargin)} icon={Percent} accent={marginColor} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -189,7 +189,7 @@ export default async function RelatoriosPage({
                           />
                         </div>
                         <span className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums w-16 text-right">
-                          {count} venda{count !== 1 ? 's' : ''} · {pct.toFixed(0)}%
+                          {count} venda{count !== 1 ? 's' : ''} · {formatPercent(pct, 0)}
                         </span>
                       </div>
                     </div>
@@ -253,7 +253,7 @@ export default async function RelatoriosPage({
                               ? 'text-slate-700 dark:text-slate-300'
                               : 'text-red-600 dark:text-red-400 font-medium'
                         }>
-                          {p.margin.toFixed(1)}%
+                          {formatPercent(p.margin)}
                         </span>
                       </td>
                     </tr>

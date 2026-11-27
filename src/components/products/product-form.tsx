@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatPercent } from '@/lib/utils/format'
 import {
   Select,
   SelectContent,
@@ -391,13 +392,13 @@ export function ProductForm({ product, categories, onSubmit }: ProductFormProps)
               <span className="text-xs opacity-80 flex gap-3">
                 {marginPct !== null && (
                   <span>
-                    Margem: <strong>{marginPct.toFixed(1)}%</strong>
+                    Margem: <strong>{formatPercent(marginPct)}</strong>
                     <span className="font-normal opacity-70"> da venda</span>
                   </span>
                 )}
                 {overCostPct !== null && (
                   <span>
-                    Ganho s/ custo: <strong>{overCostPct.toFixed(1)}%</strong>
+                    Ganho s/ custo: <strong>{formatPercent(overCostPct)}</strong>
                   </span>
                 )}
               </span>

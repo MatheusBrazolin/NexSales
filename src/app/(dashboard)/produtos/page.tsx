@@ -14,7 +14,7 @@ import {
 import { Pagination } from '@/components/ui/pagination'
 import { ProductActions } from '@/components/products/product-actions'
 import { getCategories, getProductsPaged, type StockFilter } from '@/lib/queries/products'
-import { formatCurrency } from '@/lib/utils/format'
+import { formatCurrency, formatPercent } from '@/lib/utils/format'
 import { requireAdmin } from '@/lib/auth/roles'
 import { tryQuery } from '@/lib/supabase/try-query'
 import { OfflineBanner } from '@/components/offline/offline-banner'
@@ -289,7 +289,7 @@ export default async function ProdutosPage({
                                   : 'text-red-600 dark:text-red-400 font-medium'
                             }
                           >
-                            {margin.pct.toFixed(1)}%
+                            {formatPercent(margin.pct)}
                           </span>
                         ) : (
                           <span className="text-slate-300 dark:text-slate-600">—</span>
