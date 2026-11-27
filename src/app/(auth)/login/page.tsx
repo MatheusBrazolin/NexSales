@@ -27,6 +27,7 @@ function LoginPageContent() {
   const [selected, setSelected] = useState<string | null>(null)
   const [profilePwd, setProfilePwd] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [capsLock, setCapsLock] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [isOfflineError, setIsOfflineError] = useState(false)
@@ -190,6 +191,9 @@ function LoginPageContent() {
               onChange={(e) => setProfilePwd(e.target.value)}
               placeholder="Sua senha"
               autoComplete="current-password"
+              onKeyUp={(e) => setCapsLock(e.getModifierState('CapsLock'))}
+              onKeyDown={(e) => setCapsLock(e.getModifierState('CapsLock'))}
+              onBlur={() => setCapsLock(false)}
               className="h-11 border-slate-200 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:border-primary pr-10"
             />
             <button
@@ -202,6 +206,16 @@ function LoginPageContent() {
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
+
+          {capsLock && (
+            <p
+              role="status"
+              className="flex items-center gap-1.5 text-xs font-medium text-amber-700"
+            >
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              Caps Lock está ligado.
+            </p>
+          )}
 
           {serverError && (
             <div className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm ${isOfflineError ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-200 bg-red-50 text-red-700'}`}>
@@ -268,6 +282,9 @@ function LoginPageContent() {
             id="username"
             type="text"
             placeholder="joana ou admin@loja.com"
+            // O caixa abre esta tela e digita. Sem isto, ele precisa
+            // clicar primeiro — toda manhã, em todo turno.
+            autoFocus
             autoComplete="username"
             autoCapitalize="none"
             spellCheck={false}
@@ -297,6 +314,8 @@ function LoginPageContent() {
               type={showPassword ? 'text' : 'password'}
               placeholder="Sua senha"
               autoComplete="current-password"
+              onKeyUp={(e) => setCapsLock(e.getModifierState('CapsLock'))}
+              onKeyDown={(e) => setCapsLock(e.getModifierState('CapsLock'))}
               className="h-11 border-slate-200 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:border-primary pr-10"
               {...register('password')}
             />
@@ -310,6 +329,16 @@ function LoginPageContent() {
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
+
+          {capsLock && (
+            <p
+              role="status"
+              className="flex items-center gap-1.5 text-xs font-medium text-amber-700"
+            >
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              Caps Lock está ligado.
+            </p>
+          )}
           {errors.password && (
             <p className="text-red-600 text-xs flex items-center gap-1.5">
               <AlertCircle className="h-3 w-3" />
@@ -344,9 +373,6 @@ function LoginPageContent() {
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-xs text-slate-400">
-        Conexão segura e criptografada
-      </p>
     </div>
   )
 }
