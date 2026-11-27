@@ -15,9 +15,17 @@
 import 'client-only'
 import Dexie, { type Table } from 'dexie'
 import type { Product, Category, CustomerBalance, PaymentMethod } from '@/types/database'
+import { buildSearchTokens } from '@/lib/utils/search-text'
 
 /** Mirror of `public.products.Row`. Same shape so server types reuse cleanly. */
-export type CachedProduct = Product
+/**
+ * Produto no cache local, com os tokens de busca já calculados.
+ *
+ * `search_tokens` é um índice multiEntry no Dexie: é o que permite buscar
+ * por prefixo usando o índice, em vez de ler o catálogo inteiro e filtrar
+ * em JavaScript a cada tecla digitada pelo caixa.
+ */
+export type CachedProduct = Product & { search_tokens?: string[] }
 
 /** Mirror of `public.categories.Row`. */
 export type CachedCategory = Category
@@ -103,6 +111,37 @@ class VendasAppDB extends Dexie {
       pendingSales: 'id, status, createdAt',
       customers: 'id, full_name, phone',
     })
+    // v4 — busca de produto por índice.
+    //
+    // Até aqui a busca do PDV era `db.products.filter(...)`, que o Dexie
+    // resolve lendo TODOS os produtos do IndexedDB e testando um por um em
+    // JavaScript, a cada tecla. Com catálogo pequeno não se nota; com
+    // milhares de itens é o gargalo do caixa.
+    //
+    // `*search_tokens` é um índice multiEntry: uma entrada por palavra do
+    // nome e por sufixo do código. Com ele, "coca" vira uma consulta de
+    // faixa no índice em vez de uma varredura.
+    this.version(4)
+      .stores({
+        products: 'id, code, name, is_active, *search_tokens',
+        categories: 'id, name',
+        syncMeta: 'key',
+        pendingSales: 'id, status, createdAt',
+        customers: 'id, full_name, phone',
+      })
+      .upgrade(async (tx) => {
+        // Caches já instalados não têm os tokens: calcula na subida, para o
+        // caixa não precisar esperar um sync completo para voltar a buscar.
+        await tx
+          .table('products')
+          .toCollection()
+          .modify((product: CachedProduct) => {
+            product.search_tokens = buildSearchTokens(
+              product.name ?? '',
+              product.code ?? '',
+            )
+          })
+      })
   }
 }
 

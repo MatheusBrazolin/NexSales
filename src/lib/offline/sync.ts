@@ -16,6 +16,7 @@
 import 'client-only'
 import { createClient } from '@/lib/supabase/client'
 import { getDB, type CachedCategory, type CachedCustomer, type CachedProduct, type SyncMeta } from './db'
+import { buildSearchTokens } from '@/lib/utils/search-text'
 
 export interface SyncResult {
   /** How many rows were written to the local cache. */
@@ -36,7 +37,13 @@ export async function syncProducts(): Promise<SyncResult> {
     .eq('is_active', true)
 
   if (error) throw error
-  const rows = (data ?? []) as CachedProduct[]
+  // Os tokens de busca são calculados uma vez, aqui, e não a cada tecla
+  // digitada no PDV. É o que transforma a busca do caixa numa consulta de
+  // índice em vez de uma varredura do catálogo.
+  const rows = ((data ?? []) as CachedProduct[]).map((product) => ({
+    ...product,
+    search_tokens: buildSearchTokens(product.name ?? '', product.code ?? ''),
+  }))
   const at = new Date().toISOString()
 
   const db = getDB()
