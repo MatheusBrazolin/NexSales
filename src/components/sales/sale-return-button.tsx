@@ -161,7 +161,7 @@ export function SaleReturnButton({
                 </select>
                 {refundMethod === 'cash' && (
                   <p className="mt-1 text-[11px] text-slate-400">
-                    Sai da gaveta e entra na conferência do caixa de hoje.
+                    Sai do caixa de hoje e é descontado do faturamento.
                   </p>
                 )}
               </div>
