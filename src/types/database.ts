@@ -40,6 +40,15 @@ export interface Database {
           track_stock: boolean
           created_at: string
           updated_at: string
+          // ---- Colunas CALCULADAS (computed columns do PostgREST) ----
+          // Não existem na tabela: são funções que recebem a linha e o
+          // PostgREST expõe como se fossem colunas. Dá para filtrar por
+          // elas sempre; só aparecem nos dados se forem pedidas no select
+          // — por isso são opcionais aqui.
+          /** Nome sem acento e em minúsculas. Ver 20261127000008. */
+          name_norm?: string
+          /** free (sem controle) | out (zerado) | low (<= mínimo) | ok. Ver 20261128000000. */
+          stock_status?: 'free' | 'out' | 'low' | 'ok'
         }
         Insert: {
           id?: string

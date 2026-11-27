@@ -59,8 +59,20 @@ export async function getProductsPaged(
     query = query.eq('category_id', params.categoryId)
   }
 
+  // `stock_status` e a computed column criada em 20261128000000. O filtro
+  // precisa acontecer AQUI, no banco, antes do range: antes ele rodava em
+  // JavaScript depois da pagina ja ter sido cortada em 20 linhas, entao a
+  // tela mostrava 3 itens dizendo "120 produtos" e os que precisavam de
+  // reposicao ficavam numa pagina que ninguem abre.
+  //
+  // 'ok' inclui 'free' porque produto sem controle de estoque sempre pode
+  // ser vendido — ele so nao tem quantidade para comparar.
   if (params.stock === 'out') {
-    query = query.lte('stock_quantity', 0)
+    query = query.eq('stock_status', 'out')
+  } else if (params.stock === 'low') {
+    query = query.eq('stock_status', 'low')
+  } else if (params.stock === 'ok') {
+    query = query.in('stock_status', ['ok', 'free'])
   }
 
   const from = (page - 1) * pageSize
@@ -70,13 +82,7 @@ export async function getProductsPaged(
   const { data, error, count } = await query
   if (error) throw new Error(error.message)
 
-  let items = (data ?? []) as ProductWithCategory[]
-
-  if (params.stock === 'low') {
-    items = items.filter((p) => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock)
-  } else if (params.stock === 'ok') {
-    items = items.filter((p) => p.stock_quantity > p.min_stock)
-  }
+  const items = (data ?? []) as ProductWithCategory[]
 
   const total = count ?? items.length
   const totalPages = Math.max(1, Math.ceil(total / pageSize))

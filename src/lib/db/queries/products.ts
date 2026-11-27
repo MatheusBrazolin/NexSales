@@ -69,12 +69,21 @@ export function getProductsPaged(params: ProductsListParams = {}): ProductsListR
     bindParams.push(params.categoryId)
   }
 
+  // Mesma regra do stock_status() no Postgres (20261128000000), para o
+  // desktop e a web responderem igual ao mesmo filtro.
+  //
+  // O COALESCE(track_stock, 1) é o que faltava: produto sem controle de
+  // estoque vive em 0/0 para sempre. Tratado como número, ele aparecia em
+  // "Sem estoque" — onde não deveria estar, porque não há estoque para
+  // acabar — e sumia de "Em estoque", onde o dono o procuraria.
+  const TRACKED = 'COALESCE(p.track_stock, 1) = 1'
   if (params.stock === 'out') {
-    conditions.push(`p.stock_quantity <= 0`)
+    conditions.push(`(${TRACKED} AND p.stock_quantity <= 0)`)
   } else if (params.stock === 'low') {
-    conditions.push(`p.stock_quantity > 0 AND p.stock_quantity <= p.min_stock`)
+    conditions.push(`(${TRACKED} AND p.stock_quantity > 0 AND p.stock_quantity <= p.min_stock)`)
   } else if (params.stock === 'ok') {
-    conditions.push(`p.stock_quantity > p.min_stock`)
+    // Sem controle de estoque sempre pode ser vendido: entra como 'ok'.
+    conditions.push(`(NOT ${TRACKED} OR p.stock_quantity > p.min_stock)`)
   }
 
   const where = `WHERE ${conditions.join(' AND ')}`
