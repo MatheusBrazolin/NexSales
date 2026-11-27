@@ -12,6 +12,15 @@ export interface AuditSnapshotItem {
   subtotal: number
 }
 
+/** Uma linha cujo preço saiu diferente do catálogo. */
+export interface AuditOverride {
+  product_name: string
+  quantity: number
+  list_price: number
+  charged: number
+  difference: number
+}
+
 export interface AuditSnapshot {
   sale?: {
     id: string
@@ -25,6 +34,7 @@ export interface AuditSnapshot {
   customer_name?: string | null
   items?: AuditSnapshotItem[]
   payments?: { method: PaymentMethod; amount: number }[]
+  overrides?: AuditOverride[]
 }
 
 export interface AuditEntry {
@@ -40,7 +50,7 @@ export interface AuditEntry {
 }
 
 /**
- * Histórico de exclusões.
+ * Histórico de eventos sensíveis: exclusão de venda e alteração de preço.
  *
  * Só admin enxerga — a RLS da tabela já garante isso no banco, e não
  * apenas na tela. Um funcionário que chamasse a API direto receberia

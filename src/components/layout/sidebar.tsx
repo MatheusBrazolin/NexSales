@@ -61,7 +61,7 @@ const navSections: NavSection[] = [
     title: 'Administração',
     items: [
       { href: '/configuracoes/usuarios', label: 'Usuários', icon: Users, adminOnly: true },
-      { href: '/configuracoes/auditoria', label: 'Histórico de exclusões', icon: ShieldAlert, adminOnly: true },
+      { href: '/configuracoes/auditoria', label: 'Registro de atividades', icon: ShieldAlert, adminOnly: true },
       { href: '/relatorios', label: 'Relatório de lucro', icon: BarChart3, adminOnly: true },
       { href: '/configuracoes/relatorio', label: 'Relatório por email', icon: Mail, adminOnly: true },
       { href: '/configuracoes/baixar', label: 'Baixar app', icon: MonitorDown, desktopOnly: true },

@@ -88,6 +88,7 @@ const TERMINAL_CODES: ReadonlySet<string> = new Set([
   'customer_required',
   // Divisao que nao soma o total nunca vai passar numa nova tentativa: o
   // servidor recusa sempre. Repetir so manteria a venda presa na fila.
+  'invalid_price',
   'payment_mismatch',
   'invalid_payment_amount',
 ])

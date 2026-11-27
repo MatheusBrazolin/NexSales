@@ -206,6 +206,8 @@ export interface Database {
           unit_price: number
           subtotal: number
           item_description: string | null
+          unit_cost?: number
+          list_price?: number
         }
         Insert: {
           id?: string

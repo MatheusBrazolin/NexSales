@@ -175,3 +175,17 @@ describe('cancelSale — registro de auditoria', () => {
     expect(result.success).toBe(false)
   })
 })
+
+describe('createSale — preço zerado', () => {
+  it('traduz invalid_price nomeando o produto, para o caixa saber qual corrigir', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: 'invalid_price:Caneta UNI-BALL' },
+    })
+
+    const result = await createSale(validInput)
+
+    expect(result.code).toBe('invalid_price')
+    expect(result.error).toContain('Caneta UNI-BALL')
+  })
+})

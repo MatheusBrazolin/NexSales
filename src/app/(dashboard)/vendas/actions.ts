@@ -47,6 +47,7 @@ export type CreateSaleErrorCode =
   | 'empty_cart'
   | 'unauthenticated'
   | 'customer_required'
+  | 'invalid_price'
   | 'payment_mismatch'
   | 'invalid_payment_amount'
   | 'unknown'
@@ -89,6 +90,13 @@ export async function createSale(input: CreateSaleInput): Promise<CreateSaleResu
     }
     if (msg.includes('customer_required')) {
       return { error: 'Selecione um cliente para venda fiada.', code: 'customer_required' }
+    }
+    if (msg.includes('invalid_price')) {
+      const product = msg.split(':')[1]?.trim() ?? 'produto'
+      return {
+        error: `Informe um preço maior que zero para: ${product}`,
+        code: 'invalid_price',
+      }
     }
     if (msg.includes('payment_mismatch')) {
       // Formato: payment_mismatch:<total>:<somado>

@@ -115,7 +115,7 @@ export function CancelSaleButton({ saleId, shortId }: CancelSaleButtonProps) {
                 <li className="flex items-start gap-1.5">
                   <span className="text-amber-600 mt-0.5">•</span>
                   A venda sai do histórico de vendas, mas{' '}
-                  <strong>fica registrada em Histórico de exclusões</strong> — com
+                  <strong>fica registrada no Registro de atividades</strong> — com
                   quem excluiu, quando, e tudo o que ela continha
                 </li>
               </ul>
