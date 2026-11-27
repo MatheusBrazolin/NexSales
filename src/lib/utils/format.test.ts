@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatCurrency, formatDate, PAYMENT_LABELS } from './format'
+import { formatCurrency, formatDate, PAYMENT_LABELS, formatPercent } from './format'
 
 /** Intl inserts a non-breaking space (U+00A0); normalize it for readable asserts. */
 function normalize(value: string): string {
@@ -50,5 +50,37 @@ describe('PAYMENT_LABELS', () => {
     expect(PAYMENT_LABELS.credit).toBe('Cartão de Crédito')
     expect(PAYMENT_LABELS.debit).toBe('Cartão de Débito')
     expect(PAYMENT_LABELS.pix).toBe('PIX')
+  })
+})
+
+describe('formatPercent', () => {
+  it('uses the Brazilian decimal comma', () => {
+    expect(formatPercent(12.5)).toBe('12,5%')
+  })
+
+  it('keeps the requested precision, padding with zeros', () => {
+    expect(formatPercent(30)).toBe('30,0%')
+  })
+
+  it('honours a custom precision', () => {
+    expect(formatPercent(66.666, 2)).toBe('66,67%')
+  })
+
+  it('can drop decimals entirely', () => {
+    expect(formatPercent(42.4, 0)).toBe('42%')
+  })
+
+  it('keeps the sign on a negative margin', () => {
+    expect(formatPercent(-8.25)).toBe('-8,3%')
+  })
+
+  it('groups thousands, for the odd runaway margin', () => {
+    expect(formatPercent(1234.5)).toBe('1.234,5%')
+  })
+
+  it('shows a dash instead of NaN%', () => {
+    // 0 revenue divided by 0 cost happens on an empty period.
+    expect(formatPercent(NaN)).toBe('—')
+    expect(formatPercent(Infinity)).toBe('—')
   })
 })

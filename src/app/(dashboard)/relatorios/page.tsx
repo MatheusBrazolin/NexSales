@@ -1,13 +1,15 @@
 import Link from 'next/link'
-import { TrendingUp, TrendingDown, ShoppingCart, DollarSign, Percent } from 'lucide-react'
+import { TrendingUp, TrendingDown, ShoppingCart, DollarSign, Percent, TicketPercent } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { requireAdmin } from '@/lib/auth/roles'
 import { getDREReport, PERIOD_LABELS, type DREPeriod, type DREResult } from '@/lib/queries/dre'
-import { formatCurrency } from '@/lib/utils/format'
+import { formatCurrency, formatPercent } from '@/lib/utils/format'
 import { PAYMENT_LABELS } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 import { tryQuery } from '@/lib/supabase/try-query'
 import { OfflineBanner } from '@/components/offline/offline-banner'
+import { ExportButtons } from '@/components/reports/export-buttons'
+import { buildCsvReport } from '@/lib/utils/csv'
 
 export const metadata = { title: 'Relatório de lucro' }
 
@@ -67,6 +69,7 @@ export default async function RelatoriosPage({
 
   const EMPTY_DRE: DREResult = {
     revenue: 0,
+    discounts: 0,
     cost: 0,
     grossProfit: 0,
     grossMargin: 0,
@@ -87,15 +90,43 @@ export default async function RelatoriosPage({
       {offline && (
         <OfflineBanner message="Sem conexão — relatório indisponível offline." />
       )}
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight">Relatório de lucro</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Receita, custo e margem bruta por período
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight">Relatório de lucro</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Receita, custo e margem bruta por período
+          </p>
+        </div>
+
+        <ExportButtons
+          filePrefix="relatorio-lucro"
+          rowCount={dre.topProducts.length}
+          csv={buildCsvReport(
+            [
+              'NexSales - Relatorio de lucro',
+              `Periodo;${PERIOD_LABELS[period]}`,
+              `Vendas;${dre.salesCount}`,
+              `Receita;${dre.revenue.toFixed(2).replace('.', ',')}`,
+              `Descontos;${dre.discounts.toFixed(2).replace('.', ',')}`,
+              `Custo;${dre.cost.toFixed(2).replace('.', ',')}`,
+              `Lucro bruto;${dre.grossProfit.toFixed(2).replace('.', ',')}`,
+              `Margem bruta;${dre.grossMargin.toFixed(1).replace('.', ',')}%`,
+            ],
+            [
+              { header: 'Produto', value: (p) => p.name },
+              { header: 'Qtd vendida', value: (p) => p.quantity },
+              { header: 'Receita', value: (p) => p.revenue },
+              { header: 'Custo', value: (p) => p.cost },
+              { header: 'Lucro', value: (p) => p.profit },
+              { header: 'Margem %', value: (p) => p.margin },
+            ],
+            dre.topProducts,
+          )}
+        />
       </div>
 
       {/* Period selector */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 print:hidden">
         {PERIODS.map((p) => (
           <Link
             key={p}
@@ -113,12 +144,19 @@ export default async function RelatoriosPage({
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         <KpiCard label="Vendas" value={String(dre.salesCount)} icon={ShoppingCart} accent="blue" />
-        <KpiCard label="Receita" value={formatCurrency(dre.revenue)} icon={DollarSign} accent="blue" />
+        <KpiCard label="Receita" value={formatCurrency(dre.revenue)} icon={DollarSign} accent="blue" sub="líquida de descontos" />
+        <KpiCard
+          label="Descontos"
+          value={formatCurrency(dre.discounts)}
+          icon={TicketPercent}
+          accent={dre.discounts > 0 ? 'red' : 'slate'}
+          sub="concedidos no período"
+        />
         <KpiCard label="Custo" value={formatCurrency(dre.cost)} icon={TrendingDown} accent={dre.cost > 0 ? 'red' : 'slate'} sub="custo de produto (aprox.)" />
         <KpiCard label="Lucro bruto" value={formatCurrency(dre.grossProfit)} icon={TrendingUp} accent={dre.grossProfit >= 0 ? 'green' : 'red'} />
-        <KpiCard label="Margem bruta" value={`${dre.grossMargin.toFixed(1)}%`} icon={Percent} accent={marginColor} />
+        <KpiCard label="Margem bruta" value={formatPercent(dre.grossMargin)} icon={Percent} accent={marginColor} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -151,7 +189,7 @@ export default async function RelatoriosPage({
                           />
                         </div>
                         <span className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums w-16 text-right">
-                          {count} venda{count !== 1 ? 's' : ''} · {pct.toFixed(0)}%
+                          {count} venda{count !== 1 ? 's' : ''} · {formatPercent(pct, 0)}
                         </span>
                       </div>
                     </div>
@@ -215,7 +253,7 @@ export default async function RelatoriosPage({
                               ? 'text-slate-700 dark:text-slate-300'
                               : 'text-red-600 dark:text-red-400 font-medium'
                         }>
-                          {p.margin.toFixed(1)}%
+                          {formatPercent(p.margin)}
                         </span>
                       </td>
                     </tr>

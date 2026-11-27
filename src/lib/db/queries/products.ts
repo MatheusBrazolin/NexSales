@@ -107,7 +107,9 @@ export function getLowStock(): ProductWithCategory[] {
               c.id AS cat_id, c.name AS cat_name, c.created_at AS cat_created_at
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
-       WHERE p.is_active = 1 AND p.stock_quantity <= p.min_stock
+       WHERE p.is_active = 1
+         AND p.track_stock = 1
+         AND p.stock_quantity <= p.min_stock
        ORDER BY p.stock_quantity
        LIMIT 50`,
     )

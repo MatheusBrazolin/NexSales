@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatPercent } from '@/lib/utils/format'
 import {
   Select,
   SelectContent,
@@ -244,7 +245,12 @@ export function ProductForm({ product, categories, onSubmit }: ProductFormProps)
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-5">
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
+        {/* noValidate: os campos continuam marcados como `required` para
+            leitores de tela, mas o balão nativo do navegador ("Preencha este
+            campo.") não dispara. Ele aparecia antes do react-hook-form, com a
+            fonte do sistema e fora do design, escondendo as mensagens do Zod
+            que o formulário já sabe mostrar inline. */}
+        <form noValidate onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="code" className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
@@ -391,13 +397,13 @@ export function ProductForm({ product, categories, onSubmit }: ProductFormProps)
               <span className="text-xs opacity-80 flex gap-3">
                 {marginPct !== null && (
                   <span>
-                    Margem: <strong>{marginPct.toFixed(1)}%</strong>
+                    Margem: <strong>{formatPercent(marginPct)}</strong>
                     <span className="font-normal opacity-70"> da venda</span>
                   </span>
                 )}
                 {overCostPct !== null && (
                   <span>
-                    Ganho s/ custo: <strong>{overCostPct.toFixed(1)}%</strong>
+                    Ganho s/ custo: <strong>{formatPercent(overCostPct)}</strong>
                   </span>
                 )}
               </span>

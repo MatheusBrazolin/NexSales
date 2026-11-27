@@ -11,7 +11,6 @@ import { getDB } from './db'
 import {
   syncProducts,
   syncCategories,
-  syncCustomers,
   syncAll,
   getLastSync,
 } from './sync'

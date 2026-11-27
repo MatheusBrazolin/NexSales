@@ -1,3 +1,5 @@
+import { BarChart3, Package, Users } from 'lucide-react'
+
 function DashboardMockup() {
   const chartPoints = [50, 38, 44, 22, 32, 12, 25, 8, 18, 4, 14, 8]
   const maxH = 50
@@ -173,9 +175,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {/* Hero section: text left + mockup right */}
         <div className="relative z-10 flex-1 flex items-center gap-8 mt-10">
           {/* Left: text */}
-          <div className="flex-1 min-w-0 space-y-6 max-w-[230px] xl:max-w-[260px]">
+          <div className="flex-1 min-w-0 space-y-6 max-w-[230px] xl:max-w-[300px] 2xl:max-w-[360px]">
             <div className="space-y-3">
-              <h1 className="text-3xl xl:text-[2.2rem] font-bold tracking-tight leading-[1.1]">
+              <h1 className="text-3xl xl:text-[2.4rem] 2xl:text-[2.75rem] font-bold tracking-tight leading-[1.08] text-balance">
                 A próxima geração em{' '}
                 <span
                   style={{
@@ -195,13 +197,16 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
             <ul className="space-y-3.5">
               {[
-                { icon: '📊', title: 'Analytics em tempo real', desc: 'Acompanhe métricas e desempenho instantaneamente.' },
-                { icon: '📦', title: 'Controle de estoque', desc: 'Gerencie produtos e pedidos facilmente.' },
-                { icon: '👥', title: 'Gestão Inteligente', desc: 'Clientes, vendas e relatórios em um só lugar.' },
+                { Icon: BarChart3, title: 'Analytics em tempo real', desc: 'Acompanhe métricas e desempenho instantaneamente.' },
+                { Icon: Package, title: 'Controle de estoque', desc: 'Gerencie produtos e pedidos facilmente.' },
+                { Icon: Users, title: 'Gestão Inteligente', desc: 'Clientes, vendas e relatórios em um só lugar.' },
               ].map((item) => (
                 <li key={item.title} className="flex items-start gap-3">
-                  <div className="mt-0.5 h-7 w-7 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center text-sm shrink-0">
-                    {item.icon}
+                  {/* Lucide, como no resto do app: emoji é desenhado pelo
+                      sistema operacional e muda de cara em cada máquina —
+                      logo nesta, que é a primeira tela que alguém vê. */}
+                  <div className="mt-0.5 h-7 w-7 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center shrink-0">
+                    <item.Icon className="h-3.5 w-3.5 text-violet-300" aria-hidden />
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-white/90">{item.title}</p>

@@ -116,18 +116,6 @@ function LoginPageContent() {
     }
   }
 
-  const MobileBrand = () => (
-    <div className="flex lg:hidden items-center gap-2.5 mb-10">
-      <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20">
-        <ShoppingBag className="h-5 w-5 text-white" strokeWidth={2} />
-      </div>
-      <div className="flex flex-col leading-tight">
-        <span className="font-bold text-slate-900">NexSales</span>
-        <span className="text-[9px] uppercase tracking-widest text-slate-400">Smart Sales</span>
-      </div>
-    </div>
-  )
-
   /* ── Mode: profile selection ─────────────────────────────────────── */
   if (mode === 'profiles') {
     return (
@@ -205,7 +193,7 @@ function LoginPageContent() {
               type={showPassword ? 'text' : 'password'}
               value={profilePwd}
               onChange={(e) => setProfilePwd(e.target.value)}
-              placeholder="••••••••"
+              placeholder="Sua senha"
               autoComplete="current-password"
               className="h-11 border-slate-200 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:border-primary pr-10"
             />
@@ -282,7 +270,7 @@ function LoginPageContent() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div className="space-y-2">
           <Label htmlFor="username" className="text-slate-700 text-sm font-medium">
             Usuário
@@ -318,7 +306,7 @@ function LoginPageContent() {
             <Input
               id="password"
               type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
+              placeholder="Sua senha"
               autoComplete="current-password"
               className="h-11 border-slate-200 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:border-primary pr-10"
               {...register('password')}
@@ -368,8 +356,27 @@ function LoginPageContent() {
       </form>
 
       <p className="mt-6 text-center text-xs text-slate-400">
-        Protegido por autenticação Supabase
+        Conexão segura e criptografada
       </p>
+    </div>
+  )
+}
+
+/**
+ * Brand lockup shown above the form on narrow screens. Declared at module
+ * scope: defining it inside the page component would create a brand-new
+ * component type on every render, remounting it and dropping focus.
+ */
+function MobileBrand() {
+  return (
+    <div className="flex lg:hidden items-center gap-2.5 mb-10">
+      <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20">
+        <ShoppingBag className="h-5 w-5 text-white" strokeWidth={2} />
+      </div>
+      <div className="flex flex-col leading-tight">
+        <span className="font-bold text-slate-900">NexSales</span>
+        <span className="text-[9px] uppercase tracking-widest text-slate-400">Smart Sales</span>
+      </div>
     </div>
   )
 }

@@ -94,8 +94,11 @@ export async function getLowStock(): Promise<ProductWithCategory[]> {
 
   if (error) throw new Error(error.message)
 
+  // track_stock === false means the product has no stock control at all
+  // (the "Item Avulso" of the PDV). Those sit at 0/0 forever, so without
+  // this filter they permanently occupied the low-stock alert.
   return ((data ?? []) as ProductWithCategory[]).filter(
-    (p) => p.stock_quantity <= p.min_stock,
+    (p) => p.track_stock && p.stock_quantity <= p.min_stock,
   )
 }
 

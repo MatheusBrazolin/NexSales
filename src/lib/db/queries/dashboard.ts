@@ -7,6 +7,7 @@ import type { Sale } from '@/types/database'
 interface SaleRow {
   id: string
   total_amount: number
+  discount_amount: number
   payment_method: string
   notes: string | null
   seller_id: string
@@ -36,18 +37,52 @@ export function getDashboardMetrics() {
     .all(monthStart, monthEnd) as Pick<SaleRow, 'total_amount'>[]
 
   const allProducts = db
-    .prepare(`SELECT stock_quantity, min_stock FROM products WHERE is_active = 1`)
+    .prepare(
+      // track_stock = 0 is the PDV's "Item Avulso": no stock control, so it
+      // must not sit in the low-stock count forever.
+      `SELECT stock_quantity, min_stock FROM products WHERE is_active = 1 AND track_stock = 1`,
+    )
     .all() as ProductStockRow[]
 
   const recentSales = db
     .prepare(
-      `SELECT id, total_amount, payment_method, notes, seller_id, created_at, client_uuid, customer_id
+      `SELECT id, total_amount, discount_amount, payment_method, notes, seller_id, created_at, client_uuid, customer_id
        FROM sales ORDER BY created_at DESC LIMIT 10`,
     )
     .all() as SaleRow[]
 
   const todayTotal = todaySales.reduce((s, r) => s + r.total_amount, 0)
   const monthTotal = monthSales.reduce((s, r) => s + r.total_amount, 0)
+
+  // Comparativos: mesmas janelas que a RPC do Postgres usa, para o selo de
+  // tendência dizer a mesma coisa no desktop e na web.
+  const yesterday = brDayRangeUTC(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date(Date.now() - 24 * 60 * 60 * 1000)),
+  )
+  const yesterdayTotal = (
+    db
+      .prepare(`SELECT total_amount FROM sales WHERE created_at >= ? AND created_at <= ?`)
+      .all(yesterday.start, yesterday.end) as Pick<SaleRow, 'total_amount'>[]
+  ).reduce((s, r) => s + r.total_amount, 0)
+
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
+  const lastMonthSamePoint = new Date(
+    now.getFullYear(),
+    now.getMonth() - 1,
+    now.getDate(),
+    now.getHours(),
+    now.getMinutes(),
+  ).toISOString()
+  const lastMonthTotal = (
+    db
+      .prepare(`SELECT total_amount FROM sales WHERE created_at >= ? AND created_at < ?`)
+      .all(lastMonthStart, lastMonthSamePoint) as Pick<SaleRow, 'total_amount'>[]
+  ).reduce((s, r) => s + r.total_amount, 0)
   const todayCount = todaySales.length
   const monthCount = monthSales.length
   const avgTicket = monthCount > 0 ? monthTotal / monthCount : 0
@@ -60,6 +95,8 @@ export function getDashboardMetrics() {
     monthCount,
     avgTicket,
     lowStockCount,
+    yesterdayTotal,
+    lastMonthTotal,
     recentSales: recentSales as unknown as Sale[],
   }
 }

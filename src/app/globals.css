@@ -220,6 +220,23 @@
   }
 }
 
+@layer base {
+  /* Diz ao navegador em que tema ele deve pintar o que ele mesmo desenha:
+     o popup do <select>, o calendário do <input type="date">, o spinner do
+     number e a barra de rolagem.
+     Sem isto, o app ficava escuro mas o seletor de data aparecia como um
+     retângulo branco no meio da página, e o ícone de calendário sumia por
+     ser cinza-escuro sobre fundo escuro. Vale para todo controle nativo de
+     uma vez — mais confiável que lembrar de [color-scheme:dark] em cada um. */
+  :root {
+    color-scheme: light;
+  }
+
+  :root.dark {
+    color-scheme: dark;
+  }
+}
+
 /* Custom thin scrollbar */
 @layer base {
   * {
@@ -258,5 +275,187 @@
   .dark *::-webkit-scrollbar-thumb:hover,
   [data-scrollbar="dark"] *::-webkit-scrollbar-thumb:hover {
     background-color: rgb(71 85 105);
+  }
+}
+/* ──────────────────────────────────────────────────────────────────────
+   Print / "Salvar como PDF"
+   ──────────────────────────────────────────────────────────────────────
+   The PDF export of the reports is the browser's own print dialog, so the
+   printed page is the deliverable, not an afterthought. Three things have
+   to go: the app chrome (sidebar, header, floating chips), the dark theme
+   (it would burn a whole cartridge), and anything the page uses to NAVIGATE
+   rather than to inform — period pickers, filters, action buttons.
+   Anything tagged `print:hidden` by a component is removed on top of this. */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* The app shell locks scrolling to a full-height flex column, which would
+     otherwise clip the report to a single page. */
+  body * {
+    overflow: visible !important;
+  }
+
+  /* Force the light palette: printing the dark theme means a black page. */
+  :root,
+  :root.dark {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --muted-foreground: oklch(0.45 0 0);
+    --border: oklch(0.85 0 0);
+  }
+
+  aside,
+  header,
+  nav,
+  [role="status"],
+  .print\:hidden {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  /* Keep a card and its heading on the same sheet. */
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+
+  table,
+  tr {
+    break-inside: avoid;
+  }
+
+  /* Backgrounds and accent colours are meaningful here (payment badges,
+     profit vs. loss), so ask the browser not to drop them. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Users who asked the OS for less motion get none of the CSS animations
+   either — useMotionVariants() covers framer-motion, this covers Tailwind's
+   animate-* utilities and any transition left in the markup. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Animações de entrada
+   ──────────────────────────────────────────────────────────────────────
+   Estas existem em CSS, e não em JavaScript, por um motivo específico.
+
+   Quando a entrada é feita com framer-motion e `initial="hidden"`, o HTML
+   que o servidor manda já sai com `style="opacity:0"`. O elemento só fica
+   visível depois que o bundle carrega e a biblioteca hidrata. Num celular
+   lento no balcão isso é a tela em branco por segundos; se a hidratação
+   falhar, é a tela em branco para sempre.
+
+   Em CSS, o conteúdo vai visível no HTML e a animação roda na primeira
+   pintura, sem depender de JavaScript nenhum. O bloco de
+   prefers-reduced-motion mais abaixo zera tudo isto.
+
+   framer-motion continua sendo a ferramenta certa para o que só existe
+   depois de uma interação — item entrando no carrinho, overlay de venda
+   confirmada, resultado de busca — porque aí a hidratação já aconteceu. */
+
+@keyframes nx-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes nx-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nx-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes nx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@layer utilities {
+  .nx-enter-fade-up,
+  .nx-enter-fade,
+  .nx-enter-slide-left,
+  .nx-enter-rise {
+    /* `backwards` aplica o frame inicial durante o atraso — sem isso, um
+       item com delay pisca visível antes de começar a animar. */
+    animation-fill-mode: backwards;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    animation-duration: 0.22s;
+  }
+
+  .nx-enter-fade-up {
+    animation-name: nx-fade-up;
+  }
+
+  .nx-enter-fade {
+    animation-name: nx-fade-in;
+  }
+
+  .nx-enter-slide-left {
+    animation-name: nx-slide-in-left;
+  }
+
+  .nx-enter-rise {
+    animation-name: nx-rise;
+    animation-duration: 0.4s;
+  }
+
+  /* Escalonamento: o elemento declara a própria posição na fila com
+     style={{ '--nx-index': n }} e o atraso sai daí. Mantém o efeito de
+     cascata sem precisar de um orquestrador em JavaScript. */
+  .nx-stagger {
+    animation-delay: calc(var(--nx-index, 0) * var(--nx-stagger, 45ms));
   }
 }

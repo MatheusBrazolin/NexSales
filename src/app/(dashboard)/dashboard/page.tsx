@@ -12,7 +12,9 @@ import { OfflineBanner } from '@/components/offline/offline-banner'
 
 const EMPTY_METRICS = {
   todayTotal: 0,
+  yesterdayTotal: 0,
   monthTotal: 0,
+  lastMonthTotal: 0,
   avgTicket: 0,
   lowStockCount: 0,
   todayCount: 0,
@@ -41,7 +43,9 @@ export default async function DashboardPage() {
 
       <KpiCards
         todayTotal={metrics.todayTotal}
+        yesterdayTotal={metrics.yesterdayTotal}
         monthTotal={metrics.monthTotal}
+        lastMonthTotal={metrics.lastMonthTotal}
         avgTicket={metrics.avgTicket}
         lowStockCount={metrics.lowStockCount}
         todayCount={metrics.todayCount}

@@ -1,6 +1,7 @@
 'server-only'
 
 import { createHmac, timingSafeEqual } from 'crypto'
+import { requireOfflineSecret } from '@/lib/env'
 
 export const OFFLINE_COOKIE_NAME = 'nx-offline-session'
 
@@ -20,17 +21,11 @@ interface OfflineSessionPayload {
  * At runtime in production the app will throw if the var was never configured.
  */
 function getSecret(): string {
-  const secret = process.env.OFFLINE_SESSION_SECRET
-  if (!secret) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('OFFLINE_SESSION_SECRET env var must be set in production')
-    }
-    console.warn(
-      '[offline-cookie] OFFLINE_SESSION_SECRET not set — using insecure dev fallback. Set it before going to production.',
-    )
-    return 'nexsales-offline-dev-only-fallback'
-  }
-  return secret
+  // Delegated to src/lib/env.ts so every environment variable is validated in
+  // one place, with one message. requireOfflineSecret() also rejects a secret
+  // that is present but too short to be worth signing with — a six-character
+  // "secret" is not safer than none, it only looks configured.
+  return requireOfflineSecret()
 }
 
 function sign(data: string): string {

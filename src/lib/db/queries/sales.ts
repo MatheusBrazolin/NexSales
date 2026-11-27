@@ -1,7 +1,7 @@
 import 'server-only'
 import { getDb } from '../client'
 import { brDayRangeUTC } from '@/lib/utils/datetime'
-import type { PaymentMethod, Sale, SaleWithItems, Product } from '@/types/database'
+import type { Sale, SaleWithItems, Product } from '@/types/database'
 import type { SalesListParams, SalesListResult } from '@/lib/queries/sales'
 
 const DEFAULT_PAGE_SIZE = 25

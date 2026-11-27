@@ -42,7 +42,9 @@ Sistema completo de ponto de venda para pequenos comércios: leitor USB de códi
 - Busca de produtos por **nome ou código de barras** (leitor USB ou câmera)
 - Carrinho com ajuste de quantidade e **substituição de preço por item** (promoções e correções)
 - Métodos de pagamento: **Dinheiro, PIX, Crédito, Débito e Fiado**
+- **Desconto no total** da venda, além da substituição de preço por item
 - **Calculadora de troco** automática para pagamentos em dinheiro
+- **Atalhos de teclado**: `F2` volta para a busca, `F4` finaliza a venda, `F8` limpa o carrinho
 - Baixa automática de estoque ao confirmar a venda; bloqueio se o saldo ficar negativo
 
 ### Fiado (crédito de loja)
@@ -66,6 +68,7 @@ Sistema completo de ponto de venda para pequenos comércios: leitor USB de códi
 - Gráfico de vendas dos últimos 30 dias
 - Top produtos por quantidade vendida e últimas vendas
 - **Relatório de lucro** com análise por período (admin)
+- **Exportação em CSV e PDF** do relatório de lucro e do fechamento de caixa
 
 ### Offline-first
 - Catálogo de produtos cacheado em **IndexedDB** (Dexie) — PDV funciona sem internet
@@ -319,6 +322,7 @@ Testes unitários com **Vitest** + jsdom + `fake-indexeddb` para a camada offlin
 Os arquivos de teste ficam ao lado do código que cobrem (`*.test.ts`).
 
 ```bash
+npm run lint          # ESLint (next/core-web-vitals + jsx-a11y)
 npm test              # roda toda a suíte uma vez
 npm run test:watch    # modo watch durante o desenvolvimento
 npm run test:coverage # relatório de cobertura
@@ -334,10 +338,28 @@ npm run test:coverage # relatório de cobertura
 | `lib/utils/print-receipt` | Recibo 80mm: conteúdo, marca "provisório", escape de HTML |
 | `lib/email/cash-close-email` | Assunto, HTML e texto do relatório; singular/plural; dia vazio |
 | `lib/email/report-recipients` | Merge das 3 fontes de destinatários, dedupe, filtro de internos |
+| `lib/utils/sale-totals` | Subtotal, parsing do desconto e clamp idêntico ao do servidor |
+| `lib/utils/csv` | Separador, decimal e BOM que o Excel pt-BR exige; escape de células |
+| `lib/env` | Variáveis obrigatórias × opcionais, segredo offline |
+| `lib/motion` | `prefers-reduced-motion` remove movimento e mantém opacidade |
+| `hooks/use-pdv-shortcuts` | F2/F4/F8, modificadores preservados, cleanup |
 
 > Módulos marcados com `server-only` são neutralizados por um stub no `vitest.config.mts`, sem configuração adicional nos arquivos de teste.
 
-UI e fluxos completos estão mapeados para testes E2E (Playwright) em etapa futura.
+A cobertura tem **piso configurado** em `vitest.config.mts` e o CI roda
+`npm run test:coverage`: a cobertura pode subir, não descer.
+
+Os fluxos completos estão em **Playwright** (`e2e/`): autenticação, PDV,
+offline e navegação.
+
+```bash
+npm run e2e        # roda a suíte E2E
+npm run e2e:ui     # modo interativo
+```
+
+> O E2E precisa de credenciais de uma conta admin **de teste** em
+> `.env.test.local` (ver `.env.example`). Por isso ele ainda não roda no CI:
+> exige um projeto Supabase dedicado e os secrets configurados no GitHub.
 
 ---
 
@@ -358,8 +380,10 @@ UI e fluxos completos estão mapeados para testes E2E (Playwright) em etapa futu
 ## 🔐 Segurança
 
 - **Secrets fora do repo** — `.env*` e `.claude/` no `.gitignore`
-- **RLS habilitado** em todas as tabelas (`products`, `categories`, `sales`, `sale_items`, `customers`, `user_roles`, `profiles`, `barcode_cache`, `report_recipients`)
+- **RLS alinhada ao papel do usuário** — não basta estar autenticado. Admin escreve no catálogo e lê o histórico completo; funcionário lê o catálogo, enxerga as vendas de hoje e o histórico de fiado, e não escreve em produto nem altera venda. Isso vale inclusive para quem chamar a API do Supabase direto, já que a chave anon é pública por definição (`supabase/migrations/20261127000000_rls_role_hardening.sql`)
 - **Autenticação server-side** — o layout autenticado chama `getCurrentUser()` antes de qualquer render; páginas admin reforçam com `requireAdmin()`
+- **Variáveis de ambiente validadas** no boot (`src/lib/env.ts`): falta de `OFFLINE_SESSION_SECRET` em produção falha na hora, com mensagem nomeando o que está faltando
+- Política de divulgação e modelo de ameaça em [SECURITY.md](SECURITY.md)
 - **Defense in depth no cancelamento** — restrito a admins no Node.js *e* na função PostgreSQL (`is_admin()` levanta `42501` se falso)
 - **Service Worker sem cache stale** — headers `Content-Type` e `no-cache` configurados em `next.config.ts`
 
@@ -383,10 +407,17 @@ UI e fluxos completos estão mapeados para testes E2E (Playwright) em etapa futu
 - [x] Dark mode com toggle e persistência via cookie
 - [x] Layout mobile-first com sidebar responsiva
 - [x] Testes unitários da lógica crítica (Vitest)
-- [ ] Testes E2E (Playwright) do fluxo completo de venda
+- [x] Testes E2E (Playwright) do fluxo completo de venda
+- [x] Login offline (sessão em cache para cold start sem internet)
+- [x] Exportação de relatórios (CSV / PDF)
+- [x] Desconto no total da venda
+- [x] Atalhos de teclado no PDV (F2 / F4 / F8)
+- [x] Camada de movimento com `prefers-reduced-motion`
+- [ ] E2E rodando no CI (depende de um projeto Supabase de teste)
+- [ ] Pagamento misto (dinheiro + PIX na mesma venda)
+- [ ] Sangria, suprimento e turno por operador
+- [ ] Devolução / troca de venda
 - [ ] Emissão de NFC-e via serviço terceirizado
-- [ ] Exportação de relatórios (CSV / PDF)
-- [ ] Login offline (sessão em cache para cold start sem internet)
 
 ---
 

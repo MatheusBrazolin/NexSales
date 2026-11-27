@@ -22,6 +22,8 @@ interface CreateSaleInput {
   client_uuid?: string
   /** Required when payment_method is 'fiado'. */
   customer_id?: string | null
+  /** Desconto no total, em reais. O servidor limita ao valor da venda. */
+  discount?: number
 }
 
 /**
@@ -53,6 +55,7 @@ export async function createSale(input: CreateSaleInput): Promise<CreateSaleResu
     p_items: input.items as unknown as Json,
     p_client_uuid: input.client_uuid ?? null,
     p_customer_id: input.customer_id ?? null,
+    p_discount: input.discount ?? 0,
   })
 
   if (error) {

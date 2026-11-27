@@ -1,0 +1,38 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      # Framework pieces move together; splitting them produces PRs that
+      # cannot pass CI on their own.
+      next:
+        patterns: ['next', 'eslint-config-next', '@next/*']
+      react:
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
+      # Dev tooling churns weekly and never ships to a customer; one PR.
+      dev-tooling:
+        dependency-type: development
+        patterns: ['*']
+    ignore:
+      # Electron and electron-builder decide what the Windows installer looks
+      # like. Bumping them means re-testing the installer on Windows by hand,
+      # so they are upgraded deliberately, not by a bot.
+      - dependency-name: electron
+      - dependency-name: electron-builder
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci

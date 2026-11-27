@@ -13,26 +13,6 @@ const AUTH_PATHS = ['/login', '/cadastro', '/esqueceu-senha', '/redefinir-senha'
  */
 const AUTH_TIMEOUT_MS = 3_000
 
-/** True when the error indicates the server was unreachable (not an auth failure). */
-function isNetworkError(error: unknown): boolean {
-  if (!error) return false
-  const name = error instanceof Error ? error.constructor.name : ''
-  const msg = error instanceof Error ? error.message : String(error)
-  return (
-    name === 'AuthRetryableFetchError' ||
-    msg.includes('Failed to fetch') ||
-    msg.includes('fetch failed') ||
-    msg.includes('ECONNREFUSED') ||
-    msg.includes('ENOTFOUND') ||
-    msg.includes('ETIMEDOUT') ||
-    msg.includes('network') ||
-    msg.includes('abort') ||
-    // AuthApiError (HTTP response errors) always has a numeric status field.
-    // Network errors have no HTTP status, so check for its absence.
-    (error instanceof Error && 'status' in error === false)
-  )
-}
-
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -80,7 +60,7 @@ export async function updateSession(request: NextRequest) {
       (await getUserFromOfflineCookie(request))
   } else {
     try {
-      const { data, error } = await supabase.auth.getUser()
+      const { data } = await supabase.auth.getUser()
 
       if (data.user) {
         user = data.user

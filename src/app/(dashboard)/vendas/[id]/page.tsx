@@ -204,6 +204,22 @@ export default async function VendaDetalhePage({
           </Table>
 
           <div className="border-t border-slate-100 dark:border-white/5 mx-6 my-0" />
+          {sale.discount_amount > 0 && (
+            <div className="px-6 pt-4 space-y-1">
+              <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
+                <span>Subtotal dos itens</span>
+                <span className="tabular-nums">
+                  {formatCurrency(sale.total_amount + sale.discount_amount)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm text-emerald-600 dark:text-emerald-400">
+                <span>Desconto concedido</span>
+                <span className="tabular-nums">
+                  - {formatCurrency(sale.discount_amount)}
+                </span>
+              </div>
+            </div>
+          )}
           <div className="px-6 py-4 flex items-center justify-between">
             <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Total da Venda</span>
             <span className="text-2xl font-bold text-slate-900 dark:text-slate-100 tabular-nums">

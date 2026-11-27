@@ -11,32 +11,38 @@ import {
   Minus,
   type LucideIcon,
 } from 'lucide-react'
+import { AnimatedNumber } from '@/components/ui/animated-number'
 import { formatCurrency } from '@/lib/utils/format'
+import { compareToPrevious, type TrendDirection } from '@/lib/utils/trend'
 
 interface KpiCardsProps {
   todayTotal: number
+  /** Same metric for yesterday, so the badge can compare for real. */
+  yesterdayTotal: number
   monthTotal: number
+  /** Last month up to the same point in the month, not the whole month. */
+  lastMonthTotal: number
   avgTicket: number
   lowStockCount: number
   todayCount: number
   monthCount: number
 }
 
-type Trend = 'up' | 'down' | 'flat'
-
 interface KpiCard {
   title: string
-  value: string
+  /** Raw value, so the card can count to it instead of swapping text. */
+  value: number
+  formatValue: (value: number) => string
   sub: string
   icon: LucideIcon
   iconColor: string
   iconBg: string
   accentColor: string
-  trend: Trend
+  trend: TrendDirection
   trendLabel: string
 }
 
-function TrendBadge({ trend, label }: { trend: Trend; label: string }) {
+function TrendBadge({ trend, label }: { trend: TrendDirection; label: string }) {
   const config = {
     up: {
       Icon: ArrowUp,
@@ -55,81 +61,73 @@ function TrendBadge({ trend, label }: { trend: Trend; label: string }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap shrink-0 ${className}`}
+      // Sem nowrap: os rótulos reais ("sem movimento vs mês anterior") são
+      // mais longos que os literais que estavam aqui antes, e truncar um
+      // comparativo pela metade é pior do que deixá-lo ocupar duas linhas.
+      className={`inline-flex items-start gap-1 self-start rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-snug ${className}`}
     >
-      <Icon className="h-3 w-3" />
-      {label}
+      <Icon className="h-3 w-3 shrink-0 mt-0.5" />
+      <span>{label}</span>
     </span>
   )
 }
 
-const containerVariants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.08,
-    },
-  },
-}
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: {
-      duration: 0.4,
-      ease: 'easeOut' as const,
-    },
-  },
-}
-
 export function KpiCards({
   todayTotal,
+  yesterdayTotal,
   monthTotal,
+  lastMonthTotal,
   avgTicket,
   lowStockCount,
   todayCount,
   monthCount,
 }: KpiCardsProps) {
+  const todayTrend = compareToPrevious(todayTotal, yesterdayTotal, 'vs ontem')
+  const monthTrend = compareToPrevious(monthTotal, lastMonthTotal, 'vs mês anterior')
+
   const cards: KpiCard[] = [
     {
       title: 'Vendas Hoje',
-      value: formatCurrency(todayTotal),
+      value: todayTotal,
+      formatValue: formatCurrency,
       sub: `${todayCount} venda${todayCount !== 1 ? 's' : ''} registrada${todayCount !== 1 ? 's' : ''}`,
       icon: DollarSign,
       iconColor: 'text-violet-600 dark:text-violet-400',
       iconBg: 'bg-violet-50 dark:bg-violet-500/10',
       accentColor: '#7c3aed',
-      trend: 'up',
-      trendLabel: '+12% vs ontem',
+      trend: todayTrend.direction,
+      trendLabel: todayTrend.label,
     },
     {
       title: 'Vendas no Mês',
-      value: formatCurrency(monthTotal),
+      value: monthTotal,
+      formatValue: formatCurrency,
       sub: `${monthCount} venda${monthCount !== 1 ? 's' : ''} no período`,
       icon: TrendingUp,
       iconColor: 'text-emerald-600 dark:text-emerald-400',
       iconBg: 'bg-emerald-50 dark:bg-emerald-500/10',
       accentColor: '#059669',
-      trend: 'up',
-      trendLabel: '+8% vs mês anterior',
+      trend: monthTrend.direction,
+      trendLabel: monthTrend.label,
     },
     {
       title: 'Ticket Médio',
-      value: formatCurrency(avgTicket),
+      value: avgTicket,
+      formatValue: formatCurrency,
       sub: 'Valor médio por venda',
       icon: ShoppingBag,
       iconColor: 'text-cyan-600 dark:text-cyan-400',
       iconBg: 'bg-cyan-50 dark:bg-cyan-500/10',
       accentColor: '#0891b2',
+      // O ticket médio não tem comparativo próprio guardado; em vez de
+      // inventar um, o selo apenas descreve o que o número é.
       trend: 'flat',
-      trendLabel: 'estável',
+      trendLabel: 'no mês',
     },
     {
       title: 'Estoque Baixo',
-      value: String(lowStockCount),
+      value: lowStockCount,
+      formatValue: (v: number) => String(Math.round(v)),
       sub: lowStockCount > 0 ? 'produto(s) abaixo do mínimo' : 'tudo em ordem',
       icon: AlertTriangle,
       iconColor: lowStockCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500',
@@ -141,20 +139,18 @@ export function KpiCards({
   ]
 
   return (
-    <motion.div
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      {cards.map((card) => {
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {cards.map((card, index) => {
         const Icon = card.icon
         return (
+          // Entrance in CSS so the cards are visible in the server HTML;
+          // framer-motion stays only for the hover lift, which can only
+          // happen after hydration anyway.
           <motion.div
             key={card.title}
-            variants={cardVariants}
+            style={{ '--nx-index': index } as React.CSSProperties}
             whileHover={{ y: -3, transition: { duration: 0.2 } }}
-            className="relative overflow-hidden rounded-xl border border-slate-200/60 dark:border-white/8 bg-white/80 dark:bg-slate-800/70 backdrop-blur-sm shadow-sm dark:shadow-black/30 hover:shadow-md dark:hover:shadow-black/40 transition-shadow cursor-default"
+            className="nx-enter-rise nx-stagger [--nx-stagger:80ms] relative overflow-hidden rounded-xl border border-slate-200/60 dark:border-white/8 bg-white/80 dark:bg-slate-800/70 backdrop-blur-sm shadow-sm dark:shadow-black/30 hover:shadow-md dark:hover:shadow-black/40 transition-shadow cursor-default"
           >
             {/* Accent top bar */}
             <span
@@ -177,17 +173,21 @@ export function KpiCards({
                   {card.title}
                 </p>
               </div>
-              <p className="text-[28px] font-bold text-slate-900 dark:text-slate-50 leading-none tabular-nums mb-4">
-                {card.value}
-              </p>
-              <div className="flex items-center gap-2">
+              <AnimatedNumber
+                value={card.value}
+                format={card.formatValue}
+                className="block text-[28px] font-bold text-slate-900 dark:text-slate-50 leading-none tabular-nums mb-4"
+              />
+              <div className="flex flex-col gap-1.5">
                 <TrendBadge trend={card.trend} label={card.trendLabel} />
-                <span className="text-xs text-slate-400 dark:text-slate-500 truncate">{card.sub}</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                  {card.sub}
+                </span>
               </div>
             </div>
           </motion.div>
         )
       })}
-    </motion.div>
+    </div>
   )
 }

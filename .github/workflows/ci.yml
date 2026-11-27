@@ -35,11 +35,16 @@ jobs:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
       - name: Type-check
         run: npm run typecheck
 
       - name: Run tests
-        run: npm test
+        # With coverage, so the thresholds in vitest.config.mts are enforced
+        # here and not only on whoever remembers to run them locally.
+        run: npm run test:coverage
 
       - name: Build
         # Dummy env vars are enough for `next build` — the real values are

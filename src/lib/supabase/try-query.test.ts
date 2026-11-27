@@ -38,7 +38,6 @@ describe('tryQuery', () => {
     afterEach(() => vi.useRealTimers())
 
     it('returns fallback when the function never resolves within 3000ms (default)', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
       const fn = () => new Promise<string>(() => {}) // never resolves
 
       const promise = tryQuery(fn, 'fallback')
@@ -49,7 +48,6 @@ describe('tryQuery', () => {
     })
 
     it('respects a custom timeoutMs', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
       const fn = () => new Promise<string>(() => {})
 
       const promise = tryQuery(fn, 'fallback', 1000)

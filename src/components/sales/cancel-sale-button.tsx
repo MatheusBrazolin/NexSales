@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Trash2, Loader2, AlertTriangle } from 'lucide-react'
@@ -23,6 +23,17 @@ export function CancelSaleButton({ saleId, shortId }: CancelSaleButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+
+  // Escape closes the modal from anywhere inside it. Bound on the document
+  // rather than the overlay so it works no matter which element holds focus.
+  useEffect(() => {
+    if (!isOpen) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !isPending) setIsOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [isOpen, isPending])
 
   function handleConfirm() {
     startTransition(async () => {
@@ -56,11 +67,17 @@ export function CancelSaleButton({ saleId, shortId }: CancelSaleButtonProps) {
           aria-modal="true"
           aria-labelledby="cancel-sale-title"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isPending) setIsOpen(false)
-          }}
         >
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden ring-1 ring-slate-200">
+          {/* Real button rather than a click handler on the overlay div: the
+              backdrop is dismissable by keyboard too, not only by mouse. */}
+          <button
+            type="button"
+            aria-label="Fechar"
+            disabled={isPending}
+            onClick={() => setIsOpen(false)}
+            className="absolute inset-0 cursor-default focus:outline-none"
+          />
+          <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden ring-1 ring-slate-200">
             <div className="px-6 py-5 border-b border-slate-100">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">

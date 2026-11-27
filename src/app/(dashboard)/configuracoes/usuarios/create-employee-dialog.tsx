@@ -63,7 +63,7 @@ export function CreateEmployeeDialog() {
           <DialogTitle>Criar Funcionário</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
+        <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="firstName" className="text-sm font-medium text-slate-700">

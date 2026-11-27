@@ -24,8 +24,18 @@ export default defineConfig({
       // are covered by E2E later, not chased here.
       include: [
         'src/lib/**',
+        'src/hooks/**',
         'src/app/**/actions.ts',
       ],
+      // A ratchet, not a target: set just under what the suite covers today
+      // so coverage can only go up. Raise them when you add tests; never
+      // lower them to make a red build green.
+      thresholds: {
+        statements: 27,
+        branches: 74,
+        functions: 47,
+        lines: 27,
+      },
     },
   },
 })

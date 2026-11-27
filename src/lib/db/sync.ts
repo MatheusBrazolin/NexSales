@@ -83,14 +83,17 @@ function _upsertProducts(rows: Product[]): void {
   const stmt = db.prepare(
     `INSERT OR REPLACE INTO products
      (id, code, name, description, sale_price, cost_price, stock_quantity, min_stock,
-      category_id, is_active, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      track_stock, category_id, is_active, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   for (const r of rows) {
     stmt.run(
       r.id, r.code, r.name, r.description ?? null,
       r.sale_price, r.cost_price ?? null,
       r.stock_quantity, r.min_stock,
+      // Defaults to tracked: a product synced before this column existed
+      // must not silently become a stock-free "Item Avulso".
+      r.track_stock === false ? 0 : 1,
       r.category_id ?? null, r.is_active ? 1 : 0,
       r.created_at, r.updated_at,
     )
@@ -110,12 +113,12 @@ function _upsertSales(rows: Sale[]): void {
   const db: NxDB = getDb()
   const stmt = db.prepare(
     `INSERT OR REPLACE INTO sales
-     (id, total_amount, payment_method, notes, seller_id, created_at, client_uuid, customer_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+     (id, total_amount, discount_amount, payment_method, notes, seller_id, created_at, client_uuid, customer_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   for (const r of rows) {
     stmt.run(
-      r.id, r.total_amount, r.payment_method, r.notes ?? null,
+      r.id, r.total_amount, r.discount_amount ?? 0, r.payment_method, r.notes ?? null,
       r.seller_id, r.created_at, r.client_uuid ?? null, r.customer_id ?? null,
     )
   }
