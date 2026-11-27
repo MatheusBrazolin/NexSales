@@ -268,14 +268,18 @@ export async function syncCustomers(): Promise<SyncResult> {
 /**
  * Run all syncs in parallel. Failures are caught per-entity so a transient
  * outage in one table doesn't poison the others.
+ *
+ * `force: true` obriga o refresh completo de produtos. Quem volta de um
+ * período offline usa isso: o incremental repara o que mudou, mas não vê um
+ * produto apagado de vez enquanto o caixa estava sem rede.
  */
-export async function syncAll(): Promise<{
+export async function syncAll(options: { force?: boolean } = {}): Promise<{
   products: SyncResult | { error: string }
   categories: SyncResult | { error: string }
   customers: SyncResult | { error: string }
 }> {
   const [products, categories, customers] = await Promise.all([
-    syncProducts().catch((err: unknown) => ({
+    syncProducts(options).catch((err: unknown) => ({
       error: err instanceof Error ? err.message : 'Erro ao sincronizar produtos',
     })),
     syncCategories().catch((err: unknown) => ({

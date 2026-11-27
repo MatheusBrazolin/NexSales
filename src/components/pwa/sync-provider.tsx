@@ -105,7 +105,10 @@ export function SyncProvider() {
       //    Run in parallel with the IndexedDB sync for speed.
       const [serverPulled] = await Promise.all([
         runServerSync(),
-        syncAll().catch((err: unknown) => {
+        // Voltando de um período offline, o refresh é completo: o
+        // incremental repara o que mudou, mas não enxerga um produto
+        // apagado de vez enquanto este caixa estava sem rede.
+        syncAll({ force: comingBackOnline }).catch((err: unknown) => {
           console.error('[sync] IndexedDB sync failed', err)
           return null
         }),

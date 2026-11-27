@@ -371,3 +371,27 @@ describe('syncProducts — incremental', () => {
     expect((await getDB().products.toArray()).map((p) => p.name)).toEqual(['Fresco'])
   })
 })
+
+describe('syncAll', () => {
+  it('propaga force para o sync de produtos — reconexão pede o completo', async () => {
+    const db = getDB()
+    await db.products.bulkPut([makeProduct({ name: 'Velho' })])
+    await db.syncMeta.put({
+      key: 'products',
+      lastSyncAt: '2026-01-01T00:00:00.000Z',
+      count: 1,
+      cursor: '2026-01-01T00:00:00.000Z',
+      lastFullSyncAt: new Date().toISOString(),
+    })
+    fromMock.mockImplementation((table: string) =>
+      table === 'products'
+        ? chain({ data: [makeProduct({ name: 'Fresco' })], error: null })
+        : chain({ data: [], error: null }),
+    )
+
+    const result = await syncAll({ force: true })
+
+    expect(result.products).toMatchObject({ mode: 'full' })
+    expect((await getDB().products.toArray()).map((p) => p.name)).toEqual(['Fresco'])
+  })
+})
