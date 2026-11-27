@@ -345,6 +345,24 @@ export interface Database {
       }
     }
     Functions: {
+      dashboard_metrics: {
+        Args: Record<string, never>
+        Returns: {
+          today_total: number
+          today_count: number
+          month_total: number
+          month_count: number
+          avg_ticket: number
+          low_stock_count: number
+        }[]
+      }
+      sales_last_30_days: {
+        Args: Record<string, never>
+        Returns: {
+          day_label: string
+          total: number
+        }[]
+      }
       create_sale_with_items: {
         Args: {
           p_payment_method: PaymentMethod

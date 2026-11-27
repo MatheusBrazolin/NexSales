@@ -83,14 +83,17 @@ function _upsertProducts(rows: Product[]): void {
   const stmt = db.prepare(
     `INSERT OR REPLACE INTO products
      (id, code, name, description, sale_price, cost_price, stock_quantity, min_stock,
-      category_id, is_active, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      track_stock, category_id, is_active, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   for (const r of rows) {
     stmt.run(
       r.id, r.code, r.name, r.description ?? null,
       r.sale_price, r.cost_price ?? null,
       r.stock_quantity, r.min_stock,
+      // Defaults to tracked: a product synced before this column existed
+      // must not silently become a stock-free "Item Avulso".
+      r.track_stock === false ? 0 : 1,
       r.category_id ?? null, r.is_active ? 1 : 0,
       r.created_at, r.updated_at,
     )

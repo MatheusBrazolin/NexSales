@@ -1,8 +1,6 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import type { Sale } from '@/types/database'
-import { startOfMonth, endOfMonth, subDays } from 'date-fns'
-import { brDayRangeUTC, formatBRDayMonth, todayBRISO } from '@/lib/utils/datetime'
 import { isElectron } from '@/lib/db/client'
 
 export async function getDashboardMetrics() {
@@ -12,27 +10,13 @@ export async function getDashboardMetrics() {
   }
 
   const supabase = await createClient()
-  const now = new Date()
-  const today = brDayRangeUTC(todayBRISO())
 
-  const [todaySales, monthSales, allProducts, recentSales] = await Promise.all([
-    supabase
-      .from('sales')
-      .select('total_amount')
-      .gte('created_at', today.start)
-      .lte('created_at', today.end),
-
-    supabase
-      .from('sales')
-      .select('total_amount')
-      .gte('created_at', startOfMonth(now).toISOString())
-      .lte('created_at', endOfMonth(now).toISOString()),
-
-    supabase
-      .from('products')
-      .select('stock_quantity, min_stock')
-      .eq('is_active', true),
-
+  // The KPIs are aggregated by Postgres, not by this process. Summing them
+  // here would mean paging every sale of the month through PostgREST, which
+  // silently truncates at db-max-rows (1000 by default) — past that the
+  // month total and the average ticket would just be wrong.
+  const [metrics, recentSales] = await Promise.all([
+    supabase.rpc('dashboard_metrics').single(),
     supabase
       .from('sales')
       .select('id, total_amount, payment_method, created_at')
@@ -40,22 +24,17 @@ export async function getDashboardMetrics() {
       .limit(10),
   ])
 
-  const todayTotal = (todaySales.data ?? []).reduce((s, r) => s + Number(r.total_amount), 0)
-  const monthTotal = (monthSales.data ?? []).reduce((s, r) => s + Number(r.total_amount), 0)
-  const todayCount = todaySales.data?.length ?? 0
-  const monthCount = monthSales.data?.length ?? 0
-  const avgTicket = monthCount > 0 ? monthTotal / monthCount : 0
-  const lowStockCount = (allProducts.data ?? []).filter(
-    (p) => p.stock_quantity <= p.min_stock
-  ).length
+  if (metrics.error) throw new Error(metrics.error.message)
+
+  const row = metrics.data
 
   return {
-    todayTotal,
-    monthTotal,
-    todayCount,
-    monthCount,
-    avgTicket,
-    lowStockCount,
+    todayTotal: Number(row?.today_total ?? 0),
+    monthTotal: Number(row?.month_total ?? 0),
+    todayCount: Number(row?.today_count ?? 0),
+    monthCount: Number(row?.month_count ?? 0),
+    avgTicket: Number(row?.avg_ticket ?? 0),
+    lowStockCount: Number(row?.low_stock_count ?? 0),
     recentSales: (recentSales.data ?? []) as Sale[],
   }
 }
@@ -67,29 +46,14 @@ export async function getSalesLast30Days() {
   }
 
   const supabase = await createClient()
-  const now = new Date()
-  const from = subDays(now, 29)
 
-  const { data, error } = await supabase
-    .from('sales')
-    .select('total_amount, created_at')
-    .gte('created_at', from.toISOString())
-    .order('created_at')
-
+  // Grouped and gap-filled in SQL: the previous version fetched every sale of
+  // the window and bucketed them here, which hit the same row cap as the KPIs.
+  const { data, error } = await supabase.rpc('sales_last_30_days')
   if (error) throw new Error(error.message)
 
-  const byDay: Record<string, number> = {}
-  for (let i = 0; i < 30; i++) {
-    const day = formatBRDayMonth(subDays(now, 29 - i))
-    byDay[day] = 0
-  }
-
-  for (const sale of data ?? []) {
-    const day = formatBRDayMonth(sale.created_at)
-    if (byDay[day] !== undefined) {
-      byDay[day] += Number(sale.total_amount)
-    }
-  }
-
-  return Object.entries(byDay).map(([date, total]) => ({ date, total }))
+  return (data ?? []).map((row) => ({
+    date: row.day_label,
+    total: Number(row.total),
+  }))
 }

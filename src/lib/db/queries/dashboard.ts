@@ -36,7 +36,11 @@ export function getDashboardMetrics() {
     .all(monthStart, monthEnd) as Pick<SaleRow, 'total_amount'>[]
 
   const allProducts = db
-    .prepare(`SELECT stock_quantity, min_stock FROM products WHERE is_active = 1`)
+    .prepare(
+      // track_stock = 0 is the PDV's "Item Avulso": no stock control, so it
+      // must not sit in the low-stock count forever.
+      `SELECT stock_quantity, min_stock FROM products WHERE is_active = 1 AND track_stock = 1`,
+    )
     .all() as ProductStockRow[]
 
   const recentSales = db
