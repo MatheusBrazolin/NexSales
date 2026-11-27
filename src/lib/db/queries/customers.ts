@@ -40,6 +40,7 @@ export function getCustomerDetails(id: string): CustomerDetails | null {
   interface FiadoSaleRow {
     id: string
     total_amount: number
+    discount_amount: number
     payment_method: string
     notes: string | null
     seller_id: string
@@ -55,7 +56,7 @@ export function getCustomerDetails(id: string): CustomerDetails | null {
 
   const rawSales = db
     .prepare(
-      `SELECT s.id, s.total_amount, s.payment_method, s.notes, s.seller_id, s.created_at,
+      `SELECT s.id, s.total_amount, s.discount_amount, s.payment_method, s.notes, s.seller_id, s.created_at,
               s.client_uuid, s.customer_id,
               si.id AS item_id, si.quantity, si.unit_price, si.subtotal,
               p.name AS prod_name
@@ -74,6 +75,7 @@ export function getCustomerDetails(id: string): CustomerDetails | null {
       salesMap.set(row.id, {
         id: row.id,
         total_amount: row.total_amount,
+        discount_amount: row.discount_amount ?? 0,
         payment_method: row.payment_method as Sale['payment_method'],
         notes: row.notes,
         seller_id: row.seller_id,

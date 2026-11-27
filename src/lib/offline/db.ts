@@ -45,7 +45,10 @@ export interface PendingSale {
   payment_method: PaymentMethod
   notes: string
   items: PendingSaleItem[]
+  /** Net total already discounted, for the provisional receipt. */
   total: number
+  /** Desconto aplicado no total. Replayed to the server on flush. */
+  discount?: number
   /** UUID of the customer for fiado sales; null/undefined for regular sales. */
   customer_id?: string | null
   createdAt: string // ISO timestamp

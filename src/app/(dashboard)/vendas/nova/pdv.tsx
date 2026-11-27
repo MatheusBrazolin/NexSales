@@ -19,6 +19,7 @@ import {
   UserPlus,
   Phone,
   Tag,
+  TicketPercent,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -40,6 +41,7 @@ import { searchCustomersOffline } from '@/lib/offline/customers-repo'
 import { queueSale } from '@/lib/offline/sales-repo'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { formatCurrency } from '@/lib/utils/format'
+import { cartSubtotal, parseDiscountInput, saleTotals } from '@/lib/utils/sale-totals'
 import { printReceipt } from '@/lib/utils/print-receipt'
 import { fadeUp, spring, useMotionVariants, usePrefersReducedMotion } from '@/lib/motion'
 import { usePdvShortcuts, FOCUS_SEARCH_EVENT } from '@/hooks/use-pdv-shortcuts'
@@ -49,6 +51,7 @@ import type { CartItem, CustomerBalance, PaymentMethod, Product } from '@/types/
 interface OfflineSaleConfirmation {
   items: { name: string; quantity: number; unit_price: number }[]
   total: number
+  discount: number
   paymentLabel: string
 }
 
@@ -108,6 +111,7 @@ export function PDV({ avulsoProduct }: PDVProps) {
   const [confirmedTotal, setConfirmedTotal] = useState<number | null>(null)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [cashReceivedRaw, setCashReceivedRaw] = useState('')
+  const [discountRaw, setDiscountRaw] = useState('')
 
   // --- Fiado: seleção de cliente ---
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerBalance | null>(null)
@@ -123,10 +127,19 @@ export function PDV({ avulsoProduct }: PDVProps) {
   const paymentMissing = !paymentMethod
   const customerMissing = paymentMethod === 'fiado' && !selectedCustomer
 
-  const total = cartItems.reduce(
-    (sum, item) => sum + (item.customPrice ?? item.product.sale_price) * item.quantity,
-    0,
+  // Clamped exactly the way create_sale_with_items clamps it, so the screen
+  // can never promise a total the RPC will not honour.
+  const { subtotal, discount, total, exceeded: discountExceeded } = saleTotals(
+    cartSubtotal(
+      cartItems.map((item) => ({
+        quantity: item.quantity,
+        customPrice: item.customPrice,
+        unitPrice: item.product.sale_price,
+      })),
+    ),
+    parseDiscountInput(discountRaw),
   )
+
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
   const cashReceived = cashReceivedRaw.trim()
@@ -292,6 +305,7 @@ export function PDV({ avulsoProduct }: PDVProps) {
           items: rpcItems,
           client_uuid: clientUuid,
           customer_id: selectedCustomer?.id ?? null,
+          discount,
         })
 
         if (result.error) {
@@ -322,6 +336,7 @@ export function PDV({ avulsoProduct }: PDVProps) {
         payment_method: paymentMethod,
         notes,
         total,
+        discount,
         customer_id: selectedCustomer?.id ?? null,
         items: cartItems.map((item) => ({
           product_id: item.product.id,
@@ -338,6 +353,7 @@ export function PDV({ avulsoProduct }: PDVProps) {
 
     const confirmation: OfflineSaleConfirmation = {
       total,
+      discount,
       paymentLabel:
         PAYMENT_OPTIONS.find((o) => o.value === paymentMethod)?.label ?? paymentMethod,
       items: cartItems.map((item) => ({
@@ -357,6 +373,7 @@ export function PDV({ avulsoProduct }: PDVProps) {
     const ok = printReceipt({
       items: offlineSale.items,
       total: offlineSale.total,
+      discount: offlineSale.discount,
       paymentLabel: offlineSale.paymentLabel,
       provisional: true,
     })
@@ -370,6 +387,7 @@ export function PDV({ avulsoProduct }: PDVProps) {
     setPaymentMethod('')
     setNotes('')
     setCashReceivedRaw('')
+    setDiscountRaw('')
     setTriedSubmit(false)
     setSelectedCustomer(null)
     setCustomerQuery('')
@@ -410,7 +428,9 @@ export function PDV({ avulsoProduct }: PDVProps) {
       <p aria-live="polite" className="sr-only">
         {itemCount === 0
           ? 'Carrinho vazio'
-          : `${itemCount} ${itemCount === 1 ? 'item' : 'itens'} no carrinho, total ${formatCurrency(total)}`}
+          : `${itemCount} ${itemCount === 1 ? 'item' : 'itens'} no carrinho` +
+            (discount > 0 ? `, desconto de ${formatCurrency(discount)}` : '') +
+            `, total ${formatCurrency(total)}`}
       </p>
 
       <AnimatePresence>
@@ -831,15 +851,56 @@ export function PDV({ avulsoProduct }: PDVProps) {
                 />
               </div>
 
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="discount"
+                  className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5"
+                >
+                  <TicketPercent className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
+                  Desconto no total
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                    R$
+                  </span>
+                  <Input
+                    id="discount"
+                    type="text"
+                    inputMode="decimal"
+                    value={discountRaw}
+                    onChange={(e) => setDiscountRaw(e.target.value.replace(/[^\d,.]/g, ''))}
+                    placeholder="0,00"
+                    disabled={cartItems.length === 0}
+                    aria-invalid={discountExceeded}
+                    className="pl-9 h-10 border-slate-200 dark:border-white/10 dark:bg-slate-800/60 dark:text-slate-200 tabular-nums"
+                  />
+                </div>
+                {discountExceeded && (
+                  <p className="text-amber-600 dark:text-amber-400 text-xs">
+                    Desconto maior que a venda — será aplicado até zerar o total.
+                  </p>
+                )}
+              </div>
+
               <div className="rounded-lg bg-slate-900 dark:bg-slate-950/80 dark:border dark:border-white/8 text-white p-4">
                 <div className="flex items-center justify-between text-xs text-slate-400">
                   <span>Subtotal ({itemCount} {itemCount === 1 ? 'item' : 'itens'})</span>
                   <AnimatedNumber
-                    value={total}
+                    value={subtotal}
                     format={formatCurrency}
                     className="tabular-nums"
                   />
                 </div>
+                {discount > 0 && (
+                  <div className="flex items-center justify-between text-xs text-emerald-400 mt-1">
+                    <span>Desconto</span>
+                    <AnimatedNumber
+                      value={-discount}
+                      format={formatCurrency}
+                      className="tabular-nums"
+                    />
+                  </div>
+                )}
                 <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between">
                   <span className="text-sm text-slate-300 font-medium">Total</span>
                   <AnimatedNumber

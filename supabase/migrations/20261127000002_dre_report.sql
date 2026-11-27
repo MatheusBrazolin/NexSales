@@ -22,7 +22,7 @@ stable
 set search_path = public
 as $$
   with sales_in_period as (
-    select s.id, s.total_amount, s.payment_method
+    select s.id, s.total_amount, s.discount_amount, s.payment_method
       from public.sales s
      where s.created_at >= p_start
        and s.created_at <= p_end
@@ -39,9 +39,10 @@ as $$
   ),
   totals as (
     select
-      coalesce((select sum(total_amount) from sales_in_period), 0) as revenue,
-      coalesce((select sum(cost)         from items), 0)           as cost,
-      (select count(*) from sales_in_period)                       as sales_count
+      coalesce((select sum(total_amount)    from sales_in_period), 0) as revenue,
+      coalesce((select sum(discount_amount) from sales_in_period), 0) as discounts,
+      coalesce((select sum(cost)            from items), 0)           as cost,
+      (select count(*) from sales_in_period)                          as sales_count
   ),
   by_payment as (
     select jsonb_object_agg(
@@ -77,6 +78,7 @@ as $$
   )
   select jsonb_build_object(
     'revenue',     totals.revenue,
+    'discounts',   totals.discounts,
     'cost',        totals.cost,
     'grossProfit', totals.revenue - totals.cost,
     'grossMargin', case when totals.revenue > 0

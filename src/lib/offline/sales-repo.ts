@@ -23,6 +23,7 @@ export interface QueueSaleInput {
   notes: string
   items: PendingSaleItem[]
   total: number
+  discount?: number
   customer_id?: string | null
 }
 
@@ -39,6 +40,7 @@ export async function queueSale(input: QueueSaleInput): Promise<void> {
     notes: input.notes,
     items: input.items,
     total: input.total,
+    discount: input.discount ?? 0,
     customer_id: input.customer_id ?? null,
     createdAt: new Date().toISOString(),
     status: 'pending',
@@ -126,6 +128,7 @@ export async function flushPendingSales(): Promise<{ synced: number; failed: num
         })),
         client_uuid: sale.id,
         customer_id: sale.customer_id ?? null,
+        discount: sale.discount ?? 0,
       }).catch((err: unknown) => ({
         // A thrown call means the request never reached the server (network).
         error: err instanceof Error ? err.message : 'network',

@@ -147,6 +147,8 @@ export interface Database {
         Row: {
           id: string
           total_amount: number
+          /** Desconto aplicado no total. total_amount já vem líquido. */
+          discount_amount: number
           payment_method: PaymentMethod
           notes: string | null
           seller_id: string
@@ -157,6 +159,7 @@ export interface Database {
         Insert: {
           id?: string
           total_amount: number
+          discount_amount?: number
           payment_method: PaymentMethod
           notes?: string | null
           seller_id: string
@@ -167,6 +170,7 @@ export interface Database {
         Update: {
           id?: string
           total_amount?: number
+          discount_amount?: number
           payment_method?: PaymentMethod
           notes?: string | null
           seller_id?: string
@@ -374,6 +378,7 @@ export interface Database {
           p_items: Json
           p_client_uuid?: string | null
           p_customer_id?: string | null
+          p_discount?: number
         }
         Returns: string
       }

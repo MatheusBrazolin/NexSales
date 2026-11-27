@@ -113,12 +113,12 @@ function _upsertSales(rows: Sale[]): void {
   const db: NxDB = getDb()
   const stmt = db.prepare(
     `INSERT OR REPLACE INTO sales
-     (id, total_amount, payment_method, notes, seller_id, created_at, client_uuid, customer_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+     (id, total_amount, discount_amount, payment_method, notes, seller_id, created_at, client_uuid, customer_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   for (const r of rows) {
     stmt.run(
-      r.id, r.total_amount, r.payment_method, r.notes ?? null,
+      r.id, r.total_amount, r.discount_amount ?? 0, r.payment_method, r.notes ?? null,
       r.seller_id, r.created_at, r.client_uuid ?? null, r.customer_id ?? null,
     )
   }

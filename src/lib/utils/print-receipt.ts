@@ -11,7 +11,10 @@ export interface PrintReceiptItem {
 export interface PrintReceiptData {
   storeName?: string
   items: PrintReceiptItem[]
+  /** Net total the customer pays, already discounted. */
   total: number
+  /** Desconto concedido. Omitted or 0 hides the line entirely. */
+  discount?: number
   paymentLabel: string
   notes?: string
   /** When the sale happened. Defaults to now if omitted. */
@@ -81,6 +84,14 @@ function buildReceiptHtml(data: PrintReceiptData): string {
     ? `<div class="provisional">RECIBO PROVISÓRIO<br/><span>Aguardando envio ao servidor</span></div>`
     : ''
 
+  // Shown above the total so the customer can read the arithmetic:
+  // items, minus the discount, equals what they pay.
+  const discount = data.discount ?? 0
+  const discountBlock = discount > 0
+    ? `<div class="discount"><span>Subtotal</span><span>${escapeHtml(formatCurrency(data.total + discount))}</span></div>` +
+      `<div class="discount"><span>Desconto</span><span>- ${escapeHtml(formatCurrency(discount))}</span></div>`
+    : ''
+
   const notesBlock = data.notes
     ? `<div class="sep"></div><div class="notes"><strong>Obs:</strong> ${escapeHtml(data.notes)}</div>`
     : ''
@@ -114,6 +125,7 @@ function buildReceiptHtml(data: PrintReceiptData): string {
   td.name { padding-right: 4px; word-break: break-word; }
   td.strong { font-weight: 700; }
   .total { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; }
+  .discount { display: flex; justify-content: space-between; font-size: 11px; }
   .pay { font-size: 10px; margin-top: 2px; }
   .notes { font-size: 10px; }
   .thanks { text-align: center; font-size: 10px; margin-top: 4px; }
@@ -143,6 +155,7 @@ function buildReceiptHtml(data: PrintReceiptData): string {
     <tbody>${rows}</tbody>
   </table>
   <div class="sep"></div>
+  ${discountBlock}
   <div class="total"><span>TOTAL</span><span>${escapeHtml(formatCurrency(data.total))}</span></div>
   <div class="pay"><strong>Pagamento:</strong> ${escapeHtml(data.paymentLabel)}</div>
   ${notesBlock}

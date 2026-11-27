@@ -6,6 +6,8 @@ export type DREPeriod = 'this-month' | 'last-month' | 'last-30' | 'last-90'
 
 export interface DREResult {
   revenue: number
+  /** Soma dos descontos concedidos no período. Receita já vem líquida. */
+  discounts: number
   cost: number
   grossProfit: number
   grossMargin: number
@@ -63,6 +65,7 @@ export async function getDREReport(period: DREPeriod = 'this-month'): Promise<DR
 
   return {
     revenue: Number(row.revenue ?? 0),
+    discounts: Number(row.discounts ?? 0),
     cost: Number(row.cost ?? 0),
     grossProfit: Number(row.grossProfit ?? 0),
     grossMargin: Number(row.grossMargin ?? 0),
@@ -87,6 +90,7 @@ export async function getDREReport(period: DREPeriod = 'this-month'): Promise<DR
 /** Shape of the jsonb the dre_report() RPC returns. */
 interface RawDRE {
   revenue: number | string
+  discounts: number | string
   cost: number | string
   grossProfit: number | string
   grossMargin: number | string

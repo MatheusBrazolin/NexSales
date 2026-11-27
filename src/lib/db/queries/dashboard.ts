@@ -7,6 +7,7 @@ import type { Sale } from '@/types/database'
 interface SaleRow {
   id: string
   total_amount: number
+  discount_amount: number
   payment_method: string
   notes: string | null
   seller_id: string
@@ -45,7 +46,7 @@ export function getDashboardMetrics() {
 
   const recentSales = db
     .prepare(
-      `SELECT id, total_amount, payment_method, notes, seller_id, created_at, client_uuid, customer_id
+      `SELECT id, total_amount, discount_amount, payment_method, notes, seller_id, created_at, client_uuid, customer_id
        FROM sales ORDER BY created_at DESC LIMIT 10`,
     )
     .all() as SaleRow[]

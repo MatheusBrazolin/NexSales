@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { TrendingUp, TrendingDown, ShoppingCart, DollarSign, Percent } from 'lucide-react'
+import { TrendingUp, TrendingDown, ShoppingCart, DollarSign, Percent, TicketPercent } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { requireAdmin } from '@/lib/auth/roles'
 import { getDREReport, PERIOD_LABELS, type DREPeriod, type DREResult } from '@/lib/queries/dre'
@@ -68,6 +68,7 @@ export default async function RelatoriosPage({
 
   const EMPTY_DRE: DREResult = {
     revenue: 0,
+    discounts: 0,
     cost: 0,
     grossProfit: 0,
     grossMargin: 0,
@@ -103,6 +104,7 @@ export default async function RelatoriosPage({
             `Periodo;${PERIOD_LABELS[period]}`,
             `Vendas;${dre.salesCount}`,
             `Receita;${dre.revenue.toFixed(2).replace('.', ',')}`,
+            `Descontos;${dre.discounts.toFixed(2).replace('.', ',')}`,
             `Custo;${dre.cost.toFixed(2).replace('.', ',')}`,
             `Lucro bruto;${dre.grossProfit.toFixed(2).replace('.', ',')}`,
             `Margem bruta;${dre.grossMargin.toFixed(1).replace('.', ',')}%`,
@@ -138,9 +140,16 @@ export default async function RelatoriosPage({
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         <KpiCard label="Vendas" value={String(dre.salesCount)} icon={ShoppingCart} accent="blue" />
-        <KpiCard label="Receita" value={formatCurrency(dre.revenue)} icon={DollarSign} accent="blue" />
+        <KpiCard label="Receita" value={formatCurrency(dre.revenue)} icon={DollarSign} accent="blue" sub="líquida de descontos" />
+        <KpiCard
+          label="Descontos"
+          value={formatCurrency(dre.discounts)}
+          icon={TicketPercent}
+          accent={dre.discounts > 0 ? 'red' : 'slate'}
+          sub="concedidos no período"
+        />
         <KpiCard label="Custo" value={formatCurrency(dre.cost)} icon={TrendingDown} accent={dre.cost > 0 ? 'red' : 'slate'} sub="custo de produto (aprox.)" />
         <KpiCard label="Lucro bruto" value={formatCurrency(dre.grossProfit)} icon={TrendingUp} accent={dre.grossProfit >= 0 ? 'green' : 'red'} />
         <KpiCard label="Margem bruta" value={`${dre.grossMargin.toFixed(1)}%`} icon={Percent} accent={marginColor} />

@@ -36,6 +36,7 @@ export function initSchema(db: NxDB): void {
     CREATE TABLE IF NOT EXISTS sales (
       id              TEXT PRIMARY KEY,
       total_amount    REAL NOT NULL,
+      discount_amount REAL NOT NULL DEFAULT 0,
       payment_method  TEXT NOT NULL,
       notes           TEXT,
       seller_id       TEXT NOT NULL,
@@ -98,6 +99,11 @@ export function initSchema(db: NxDB): void {
     .all() as { name: string }[]
   if (!productColumns.some((c) => c.name === 'track_stock')) {
     db.exec(`ALTER TABLE products ADD COLUMN track_stock INTEGER NOT NULL DEFAULT 1`)
+  }
+
+  const saleColumns = db.prepare(`PRAGMA table_info(sales)`).all() as { name: string }[]
+  if (!saleColumns.some((c) => c.name === 'discount_amount')) {
+    db.exec(`ALTER TABLE sales ADD COLUMN discount_amount REAL NOT NULL DEFAULT 0`)
   }
 
   // customer_balances view: computes fiado debt from local data.

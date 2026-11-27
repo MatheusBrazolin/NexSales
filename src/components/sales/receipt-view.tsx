@@ -168,6 +168,18 @@ function ReceiptBody({ sale, storeName }: { sale: SaleWithItems; storeName: stri
       <Separator />
 
       {/* Total */}
+      {sale.discount_amount > 0 && (
+        <>
+          <div className="flex justify-between text-[10px] mb-0.5">
+            <span className="text-gray-500">Subtotal</span>
+            <span>{formatCurrency(sale.total_amount + sale.discount_amount)}</span>
+          </div>
+          <div className="flex justify-between text-[10px] mb-1">
+            <span className="text-gray-500">Desconto</span>
+            <span>- {formatCurrency(sale.discount_amount)}</span>
+          </div>
+        </>
+      )}
       <div className="flex justify-between items-baseline mb-1">
         <span className="font-bold text-sm tracking-wide">TOTAL</span>
         <span className="font-bold text-lg">{formatCurrency(sale.total_amount)}</span>
