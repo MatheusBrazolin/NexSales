@@ -43,6 +43,7 @@ import { AnimatedNumber } from '@/components/ui/animated-number'
 import { formatCurrency } from '@/lib/utils/format'
 import { cartSubtotal, parseDiscountInput, saleTotals } from '@/lib/utils/sale-totals'
 import { PaymentSplit } from '@/components/sales/payment-split'
+import { PixChargePanel, type PixState } from '@/components/sales/pix-charge-panel'
 import {
   cleanPaymentLines,
   summarizeSplit,
@@ -70,10 +71,12 @@ const PAYMENT_OPTIONS: { value: PaymentMethod; label: string }[] = [
 ]
 
 interface PDVProps {
+  /** Há provedor Pix configurado no servidor. */
+  pixEnabled?: boolean
   avulsoProduct?: Product | null
 }
 
-export function PDV({ avulsoProduct }: PDVProps) {
+export function PDV({ avulsoProduct, pixEnabled = false }: PDVProps) {
   const router = useRouter()
   const panelVariants = useMotionVariants({
     hidden: { opacity: 0, y: 8, scale: 0.98 },
@@ -123,6 +126,11 @@ export function PDV({ avulsoProduct }: PDVProps) {
   const [splitMode, setSplitMode] = useState(false)
   const [splitLines, setSplitLines] = useState<PaymentLine[]>([])
   const [splitRaw, setSplitRaw] = useState<string[]>([])
+  // A chave de idempotência precisa existir ANTES de finalizar: a cobrança
+  // Pix é criada para uma venda que ainda não existe, e as duas têm de
+  // usar o mesmo identificador.
+  const [clientUuid, setClientUuid] = useState(() => crypto.randomUUID())
+  const [pixState, setPixState] = useState<PixState>('idle')
   const [discountRaw, setDiscountRaw] = useState('')
 
   // --- Fiado: seleção de cliente ---
@@ -318,7 +326,6 @@ export function PDV({ avulsoProduct }: PDVProps) {
 
     setIsSubmitting(true)
 
-    const clientUuid = crypto.randomUUID()
     const rpcItems = cartItems.map((item) => ({
       product_id: item.product.id,
       quantity: item.quantity,
@@ -427,6 +434,8 @@ export function PDV({ avulsoProduct }: PDVProps) {
     setSplitMode(false)
     setSplitLines([])
     setSplitRaw([])
+    setClientUuid(crypto.randomUUID())
+    setPixState('idle')
     setNotes('')
     setCashReceivedRaw('')
     setDiscountRaw('')
@@ -710,6 +719,19 @@ export function PDV({ avulsoProduct }: PDVProps) {
                 )}
               </div>
 
+              {pixEnabled && !splitMode && paymentMethod === 'pix' && total > 0 && (
+                <PixChargePanel
+                  amount={total}
+                  clientUuid={clientUuid}
+                  onStateChange={setPixState}
+                  onConfirmed={() => {
+                    // Confirmado pelo banco: finaliza sozinho. É o ganho
+                    // real — o operador para de conferir o celular.
+                    if (!isSubmitting) void handleSubmit()
+                  }}
+                />
+              )}
+
               {showCashBox && (
                 <div className="rounded-lg border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-500/8 p-3 space-y-3">
                   <div className="space-y-1.5">
@@ -986,6 +1008,13 @@ export function PDV({ avulsoProduct }: PDVProps) {
                   />
                 </div>
               </div>
+
+              {pixEnabled && paymentMethod === 'pix' && pixState === 'pending' && (
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 text-center mb-2">
+                  O pagamento ainda não foi confirmado pelo banco. Você pode
+                  finalizar mesmo assim, se já conferiu.
+                </p>
+              )}
 
               <Button
                 className="hidden lg:flex w-full h-12 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold text-base shadow-sm shadow-green-900/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

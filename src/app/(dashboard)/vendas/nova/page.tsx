@@ -24,7 +24,9 @@ export default async function NovaVendaPage() {
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight">Nova Venda</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Selecione os produtos e finalize a venda</p>
       </div>
-      <PDV avulsoProduct={avulsoProduct ?? null} />
+      {/* O Pix com baixa automática só aparece quando há provedor
+          configurado. Sem credenciais, o PDV se comporta como antes. */}
+      <PDV avulsoProduct={avulsoProduct ?? null} pixEnabled={Boolean(process.env.PIX_PROVIDER)} />
     </div>
   )
 }

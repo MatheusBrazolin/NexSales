@@ -244,6 +244,44 @@ export interface Database {
           }
         ]
       }
+      pix_charges: {
+        Row: {
+          id: string
+          client_uuid: string
+          sale_id: string | null
+          amount: number
+          provider: string
+          provider_charge_id: string | null
+          status: 'pending' | 'paid' | 'expired' | 'cancelled'
+          qr_code: string | null
+          qr_code_base64: string | null
+          paid_at: string | null
+          expires_at: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          client_uuid: string
+          sale_id?: string | null
+          amount: number
+          provider: string
+          provider_charge_id?: string | null
+          status?: 'pending' | 'paid' | 'expired' | 'cancelled'
+          qr_code?: string | null
+          qr_code_base64?: string | null
+          paid_at?: string | null
+          expires_at?: string | null
+          created_by?: string | null
+        }
+        Update: {
+          status?: 'pending' | 'paid' | 'expired' | 'cancelled'
+          sale_id?: string | null
+          paid_at?: string | null
+        }
+        Relationships: []
+      }
       sale_returns: {
         Row: {
           id: string
