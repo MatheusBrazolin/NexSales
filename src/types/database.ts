@@ -345,6 +345,10 @@ export interface Database {
       }
     }
     Functions: {
+      dre_report: {
+        Args: { p_start: string; p_end: string }
+        Returns: unknown
+      }
       dashboard_metrics: {
         Args: Record<string, never>
         Returns: {

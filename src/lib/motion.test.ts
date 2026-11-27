@@ -88,7 +88,7 @@ describe('useMotionVariants', () => {
     const { result } = renderHook(() => useMotionVariants(listRow))
 
     for (const state of Object.values(result.current)) {
-      const transition = (state as Record<string, { duration?: number }>).transition
+      const transition = (state as unknown as { transition?: { duration?: number } }).transition
       expect(transition?.duration).toBe(0)
     }
   })

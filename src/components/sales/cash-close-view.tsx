@@ -14,6 +14,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ExportButtons } from '@/components/reports/export-buttons'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -173,6 +174,28 @@ export function CashCloseView({ summary }: CashCloseViewProps) {
                 className="h-10 pl-9 pr-3 border border-slate-200 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
+            {/* PDF here goes through the desktop bridge / print dialog below,
+                so only the CSV button is borrowed from the shared component. */}
+            <ExportButtons
+              filePrefix={`fechamento-${summary.date}`}
+              showPrint={false}
+              preamble={[
+                'NexSales - Fechamento de caixa',
+                `Data;${summary.date}`,
+                `Vendas;${summary.count}`,
+                `Total;${summary.total.toFixed(2).replace('.', ',')}`,
+                `Ticket medio;${summary.averageTicket.toFixed(2).replace('.', ',')}`,
+              ]}
+              columns={[
+                { header: 'Hora', value: (sale) => format(new Date(sale.created_at), 'HH:mm') },
+                { header: 'Venda', value: (sale) => sale.id.slice(0, 8) },
+                { header: 'Pagamento', value: (sale) => PAYMENT_LABELS[sale.payment_method] ?? sale.payment_method },
+                { header: 'Itens', value: (sale) => sale.items.reduce((n, item) => n + item.quantity, 0) },
+                { header: 'Total', value: (sale) => sale.total_amount },
+                { header: 'Observacoes', value: (sale) => sale.notes ?? '' },
+              ]}
+              rows={summary.sales}
+            />
             <Button
               onClick={handleSavePdf}
               variant="outline"

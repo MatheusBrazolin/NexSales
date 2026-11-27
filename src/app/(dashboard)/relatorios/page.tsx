@@ -8,6 +8,7 @@ import { PAYMENT_LABELS } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 import { tryQuery } from '@/lib/supabase/try-query'
 import { OfflineBanner } from '@/components/offline/offline-banner'
+import { ExportButtons } from '@/components/reports/export-buttons'
 
 export const metadata = { title: 'Relatório de lucro' }
 
@@ -87,15 +88,39 @@ export default async function RelatoriosPage({
       {offline && (
         <OfflineBanner message="Sem conexão — relatório indisponível offline." />
       )}
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight">Relatório de lucro</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Receita, custo e margem bruta por período
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight">Relatório de lucro</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Receita, custo e margem bruta por período
+          </p>
+        </div>
+
+        <ExportButtons
+          filePrefix="relatorio-lucro"
+          preamble={[
+            'NexSales - Relatorio de lucro',
+            `Periodo;${PERIOD_LABELS[period]}`,
+            `Vendas;${dre.salesCount}`,
+            `Receita;${dre.revenue.toFixed(2).replace('.', ',')}`,
+            `Custo;${dre.cost.toFixed(2).replace('.', ',')}`,
+            `Lucro bruto;${dre.grossProfit.toFixed(2).replace('.', ',')}`,
+            `Margem bruta;${dre.grossMargin.toFixed(1).replace('.', ',')}%`,
+          ]}
+          columns={[
+            { header: 'Produto', value: (p) => p.name },
+            { header: 'Qtd vendida', value: (p) => p.quantity },
+            { header: 'Receita', value: (p) => p.revenue },
+            { header: 'Custo', value: (p) => p.cost },
+            { header: 'Lucro', value: (p) => p.profit },
+            { header: 'Margem %', value: (p) => p.margin },
+          ]}
+          rows={dre.topProducts}
+        />
       </div>
 
       {/* Period selector */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 print:hidden">
         {PERIODS.map((p) => (
           <Link
             key={p}

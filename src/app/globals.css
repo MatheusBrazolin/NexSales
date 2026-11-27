@@ -260,3 +260,87 @@
     background-color: rgb(71 85 105);
   }
 }
+/* ──────────────────────────────────────────────────────────────────────
+   Print / "Salvar como PDF"
+   ──────────────────────────────────────────────────────────────────────
+   The PDF export of the reports is the browser's own print dialog, so the
+   printed page is the deliverable, not an afterthought. Three things have
+   to go: the app chrome (sidebar, header, floating chips), the dark theme
+   (it would burn a whole cartridge), and anything the page uses to NAVIGATE
+   rather than to inform — period pickers, filters, action buttons.
+   Anything tagged `print:hidden` by a component is removed on top of this. */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* The app shell locks scrolling to a full-height flex column, which would
+     otherwise clip the report to a single page. */
+  body * {
+    overflow: visible !important;
+  }
+
+  /* Force the light palette: printing the dark theme means a black page. */
+  :root,
+  :root.dark {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --muted-foreground: oklch(0.45 0 0);
+    --border: oklch(0.85 0 0);
+  }
+
+  aside,
+  header,
+  nav,
+  [role="status"],
+  .print\:hidden {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  /* Keep a card and its heading on the same sheet. */
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+
+  table,
+  tr {
+    break-inside: avoid;
+  }
+
+  /* Backgrounds and accent colours are meaningful here (payment badges,
+     profit vs. loss), so ask the browser not to drop them. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Users who asked the OS for less motion get none of the CSS animations
+   either — useMotionVariants() covers framer-motion, this covers Tailwind's
+   animate-* utilities and any transition left in the markup. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
