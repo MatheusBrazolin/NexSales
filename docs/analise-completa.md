@@ -1,6 +1,53 @@
 # NexSales — Análise completa do projeto
 
-> Data: 27/11/2026 · Base: `main` @ `0982588` · 17.760 linhas em `src/` (143 arquivos TS/TSX)
+> Análise: 27/11/2026 · Base: `main` @ `0982588` · 17.760 linhas em `src/` (143 arquivos TS/TSX)
+> Implementação: branch `feat/polimento-completo`
+
+---
+
+## 0. O que já foi implementado
+
+Tudo abaixo está na branch `feat/polimento-completo`, com typecheck, ESLint,
+173 testes e `next build` verdes.
+
+| Onda | Item | Estado |
+|---|---|---|
+| 1 | RLS alinhada ao papel do usuário (§2.1) | ✅ `20261127000000_rls_role_hardening.sql` |
+| 1 | KPIs e série de 30 dias agregados em SQL (§2.2) | ✅ `20261127000001_dashboard_aggregates.sql` |
+| 1 | ESLint + `jsx-a11y` + step no CI (§5.1) | ✅ 31 violações corrigidas |
+| 1 | Branches obsoletas (§5.5) | ⏸️ apagar remoto é irreversível — aguardando seu OK |
+| 1 | README atualizado (§5.6) | ✅ |
+| 2 | `src/lib/motion.ts` + `prefers-reduced-motion` (§4.2) | ✅ |
+| 2 | Carrinho, total, troco, confirmação, busca, KPIs, gráfico, rotas (§4.1) | ✅ |
+| 2 | `aria-live`, `aria-busy`, skip link (§4.3) | ✅ |
+| 3 | Atalhos F2 / F4 / F8 (§4.4) | ✅ |
+| 3 | Exportação CSV / PDF (§6) | ✅ |
+| 3 | Desconto no total (§6) | ✅ |
+| 3 | Pagamento misto (§6) | ❌ não feito — ver §9 |
+| 3 | Sangria / turno, devolução (§6) | ❌ não feito — ver §9 |
+| 4 | `env.ts` com Zod, `SECURITY.md`, Dependabot, piso de cobertura (§5) | ✅ |
+| 4 | Cobertura: 21,4% → **28,1%**, 108 → **173 testes** | ✅ |
+| 4 | E2E no CI (§5.3) | ❌ precisa de projeto Supabase de teste + secrets |
+| 4 | NFC-e (§6) | ❌ precisa de escolha de provedor e credenciais |
+
+### Bugs encontrados durante a implementação, que esta análise não tinha achado
+
+1. **`create_sale_with_items` cobrava preço cheio em item zerado.** A migration
+   `20260623000001_track_stock.sql` reintroduziu o `NULLIF(unit_price, 0)` que a
+   `20260615000003` tinha acabado de remover, justamente por isso. Um brinde
+   (preço zerado pelo caixa) saía cobrado pelo valor de catálogo, em silêncio.
+   Corrigido em `20261127000003_sale_discount.sql`.
+
+2. **No app Windows, todo produto era tratado como avulso.** A tabela `products`
+   do SQLite não tinha a coluna `track_stock` e o sync nunca a copiava, mas o
+   leitor fazia `row.track_stock === 1`. Resultado: `undefined` → `false` para
+   todos os produtos. Nenhum controle de estoque no desktop.
+
+3. **O relatório de lucro tinha o mesmo truncamento do dashboard.** Mesma causa,
+   mesmo silêncio. Corrigido com a RPC `dre_report()`.
+
+4. **O "Item Avulso" ocupava o alerta de estoque baixo para sempre.** Fica em
+   0/0 por definição, e o filtro não olhava `track_stock`.
 
 ---
 
@@ -105,8 +152,9 @@ Criar `src/lib/motion.ts` com os tokens de movimento (`duration`, `easing`, vari
 - **1 único `aria-live`** no projeto inteiro (`offline-indicator.tsx`). O PDV muda total, troco e quantidade de itens sem anunciar nada a leitor de tela.
 - **0 `aria-busy`** durante submits.
 - Sem **skip link** para o conteúdo principal.
-- `focus-visible` aparece em 19 pontos (bom), mas não há foco gerenciado após ações — ex.: depois de adicionar um item, o foco deveria voltar à busca para o próximo bipe.
+- `focus-visible` aparece em 19 pontos (bom).
 - Navegação por teclado existe e é boa no `product-search` (setas, Enter, Escape) e no `cart` (Enter/Escape) — o alicerce está lá.
+- **Correção da primeira versão deste relatório:** afirmei que não havia gestão de foco após adicionar um item. Está errado — `product-search.tsx` já devolve o foco ao campo de busca via `useEffect` quando o item sai do painel de confirmação. O que faltava de fato era `aria-live` e o skip link.
 
 ### 4.4 O que falta para "parecer PDV profissional"
 
@@ -178,6 +226,35 @@ Oportunidades que ainda não estão no roadmap:
 14. Subir cobertura de `roles.ts`, `local-auth.ts` e server actions; definir threshold.
 15. `env.ts` com Zod, `SECURITY.md`, Dependabot, bundle analyzer.
 16. NFC-e.
+
+---
+
+## 9. O que não foi feito, e por quê
+
+**Pagamento misto** (metade PIX, metade dinheiro). Não é um campo a mais: muda
+a forma de uma venda de *uma* coluna `payment_method` para *N* pagamentos. Isso
+atravessa a idempotência da fila offline, todo relatório que agrupa por forma
+de pagamento, o e-mail de fechamento, o espelho SQLite do desktop e os recibos.
+É uma migração, não um toggle — e não há como validar nada disso sem um banco
+real. Merece branch própria, com o Supabase de teste em pé.
+
+**Sangria, suprimento, turno por operador e devolução / troca.** Mesma razão em
+menor escala: cada um exige tabela nova e decisão de produto (uma devolução
+volta ao estoque? gera crédito? aceita parcial?). São features, não polimento,
+e inventar a regra de negócio no lugar do dono da loja seria o erro errado.
+
+**E2E no CI.** As 5 specs do Playwright existem e rodam localmente, mas
+precisam de um projeto Supabase dedicado a teste e dos secrets
+(`E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD`) no GitHub — configuração de
+infraestrutura, não código.
+
+**NFC-e.** Depende de escolher provedor (Focus NFe, NFe.io, Tecnospeed…),
+contratar e ter certificado digital A1 da loja. Nenhuma linha de código faz
+sentido antes dessas decisões.
+
+**Apagar as 4 branches obsoletas.** Verifiquei que as quatro já estão contidas
+em `main` e podem ir embora, mas apagar branch remota é irreversível e isso é
+decisão sua.
 
 ---
 
