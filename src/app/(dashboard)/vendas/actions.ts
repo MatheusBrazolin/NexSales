@@ -140,7 +140,10 @@ export interface CancelSaleResult {
  * operation is atomic — no risk of restoring stock and then failing to delete
  * the sale, or vice-versa.
  */
-export async function cancelSale(saleId: string): Promise<CancelSaleResult> {
+export async function cancelSale(
+  saleId: string,
+  reason?: string,
+): Promise<CancelSaleResult> {
   if (!(await isAdmin())) {
     return {
       success: false,
@@ -149,7 +152,12 @@ export async function cancelSale(saleId: string): Promise<CancelSaleResult> {
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.rpc('cancel_sale', { p_sale_id: saleId })
+  // O motivo vai junto para o registro de auditoria. Opcional: exigir
+  // texto obrigatorio so faria o operador digitar "x" com pressa.
+  const { error } = await supabase.rpc('cancel_sale', {
+    p_sale_id: saleId,
+    p_reason: reason?.trim() || null,
+  })
 
   if (error) {
     if (error.message.includes('sale_not_found')) {

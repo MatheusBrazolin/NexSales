@@ -242,6 +242,23 @@ export interface Database {
           }
         ]
       }
+      audit_log: {
+        Row: {
+          id: string
+          action: string
+          entity: string
+          entity_id: string | null
+          actor_id: string | null
+          actor_email: string | null
+          summary: string
+          reason: string | null
+          snapshot: Json
+          created_at: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       sale_payments: {
         Row: {
           id: string
@@ -473,6 +490,7 @@ export interface Database {
       cancel_sale: {
         Args: {
           p_sale_id: string
+          p_reason?: string | null
         }
         Returns: null
       }

@@ -21,6 +21,7 @@ interface CancelSaleButtonProps {
  */
 export function CancelSaleButton({ saleId, shortId }: CancelSaleButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [reason, setReason] = useState('')
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -37,7 +38,7 @@ export function CancelSaleButton({ saleId, shortId }: CancelSaleButtonProps) {
 
   function handleConfirm() {
     startTransition(async () => {
-      const result = await cancelSale(saleId)
+      const result = await cancelSale(saleId, reason)
       if (result.success) {
         toast.success('Venda excluída. Estoque devolvido aos produtos.')
         setIsOpen(false)
@@ -113,9 +114,32 @@ export function CancelSaleButton({ saleId, shortId }: CancelSaleButtonProps) {
                 </li>
                 <li className="flex items-start gap-1.5">
                   <span className="text-amber-600 mt-0.5">•</span>
-                  O histórico não terá registro dessa venda
+                  A venda sai do histórico de vendas, mas{' '}
+                  <strong>fica registrada em Histórico de exclusões</strong> — com
+                  quem excluiu, quando, e tudo o que ela continha
                 </li>
               </ul>
+            </div>
+
+            <div className="px-6 py-4 border-b border-slate-100">
+              <label
+                htmlFor="cancel-reason"
+                className="block text-xs font-medium text-slate-700"
+              >
+                Motivo <span className="font-normal text-slate-400">(opcional)</span>
+              </label>
+              <input
+                id="cancel-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                disabled={isPending}
+                maxLength={200}
+                placeholder="Ex.: cliente desistiu, item errado"
+                className="mt-1.5 w-full h-9 rounded-md border border-slate-200 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+              />
+              <p className="mt-1.5 text-[11px] text-slate-400">
+                Fica guardado junto com o registro da exclusão.
+              </p>
             </div>
 
             <div className="px-6 py-4 flex items-center justify-end gap-2 bg-slate-50/30">

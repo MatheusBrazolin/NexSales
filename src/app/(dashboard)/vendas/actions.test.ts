@@ -7,8 +7,12 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({ rpc: rpcMock })),
 }))
+vi.mock('@/lib/auth/roles', () => ({ isAdmin: vi.fn() }))
+vi.mock('@/lib/db/client', () => ({ isElectron: () => false }))
+vi.mock('@/lib/db/sync', () => ({ pullSingleSale: vi.fn(), deleteLocalSale: vi.fn() }))
 
-import { createSale } from './actions'
+import { isAdmin } from '@/lib/auth/roles'
+import { createSale, cancelSale } from './actions'
 
 const validInput = {
   payment_method: 'cash' as const,
@@ -134,5 +138,40 @@ describe('createSale — pagamento dividido', () => {
     expect(result.code).toBe('payment_mismatch')
     expect(result.error).toContain('60.00')
     expect(result.error).toContain('70.00')
+  })
+})
+
+describe('cancelSale — registro de auditoria', () => {
+  it('encaminha o motivo para o banco gravar junto com a exclusão', async () => {
+    vi.mocked(isAdmin).mockResolvedValue(true)
+    rpcMock.mockResolvedValue({ error: null })
+
+    await cancelSale('sale-1', '  cliente desistiu  ')
+
+    expect(rpcMock).toHaveBeenCalledWith('cancel_sale', {
+      p_sale_id: 'sale-1',
+      p_reason: 'cliente desistiu',
+    })
+  })
+
+  it('motivo em branco vira null, e não uma string vazia no histórico', async () => {
+    vi.mocked(isAdmin).mockResolvedValue(true)
+    rpcMock.mockResolvedValue({ error: null })
+
+    await cancelSale('sale-1', '   ')
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'cancel_sale',
+      expect.objectContaining({ p_reason: null }),
+    )
+  })
+
+  it('não chama o banco quando quem pede não é admin', async () => {
+    vi.mocked(isAdmin).mockResolvedValue(false)
+
+    const result = await cancelSale('sale-1')
+
+    expect(rpcMock).not.toHaveBeenCalled()
+    expect(result.success).toBe(false)
   })
 })
