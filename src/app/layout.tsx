@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono, Poppins } from 'next/font/google'
 import { cookies } from 'next/headers'
 import { Toaster } from 'sonner'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import { isElectron } from '@/lib/db/client'
 import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register'
 import './globals.css'
 
@@ -93,7 +94,11 @@ export default async function RootLayout({
         {children}
         <Toaster richColors position="top-right" />
         <ServiceWorkerRegister />
-        <SpeedInsights />
+        {/* Só na web. No app de desktop, isto dispara uma chamada de
+            analytics para a Vercel a cada tela — de dentro do PDV de uma
+            loja que pode estar sem internet, para um endereço que nunca vai
+            responder ali. */}
+        {!isElectron() && <SpeedInsights />}
       </body>
     </html>
   )
