@@ -19,7 +19,8 @@
     "pwa:icons": "node scripts/generate-pwa-icons.mjs",
     "desktop": "electron .",
     "desktop:build": "npm rebuild better-sqlite3 && next build && node scripts/copy-standalone.mjs && electron-builder --win",
-    "desktop:rebuild-sqlite": "npx electron-rebuild -f -w better-sqlite3"
+    "desktop:rebuild-sqlite": "npx electron-rebuild -f -w better-sqlite3",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -50,6 +51,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
@@ -65,6 +67,9 @@
     "electron": "^33.3.0",
     "electron-builder": "^25.1.8",
     "electron-rebuild": "^3.2.9",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.6",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4",

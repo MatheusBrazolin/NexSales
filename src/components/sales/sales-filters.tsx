@@ -50,10 +50,14 @@ export function SalesFilters({
     <div className="p-4 border-b border-slate-100 dark:border-white/5 relative">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
+          <label
+            htmlFor="filtro-pagamento"
+            className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1"
+          >
             Pagamento
           </label>
           <select
+            id="filtro-pagamento"
             value={payment}
             onChange={(e) => update('payment', e.target.value)}
             disabled={isPending}
@@ -70,16 +74,23 @@ export function SalesFilters({
         </div>
 
         <div>
-          <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">
+          <label
+            htmlFor="filtro-dia"
+            className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1"
+          >
             Dia
           </label>
           {lockedDay ? (
             // Funcionário: data travada em hoje, sem seletor.
-            <div className="w-full h-10 px-3 border border-slate-200 dark:border-white/10 rounded-md text-sm bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 flex items-center">
+            <output
+              id="filtro-dia"
+              className="w-full h-10 px-3 border border-slate-200 dark:border-white/10 rounded-md text-sm bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 flex items-center"
+            >
               Apenas hoje
-            </div>
+            </output>
           ) : (
             <input
+              id="filtro-dia"
               type="date"
               value={day}
               onChange={(e) => update('day', e.target.value)}

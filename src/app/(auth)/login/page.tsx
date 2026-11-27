@@ -116,18 +116,6 @@ function LoginPageContent() {
     }
   }
 
-  const MobileBrand = () => (
-    <div className="flex lg:hidden items-center gap-2.5 mb-10">
-      <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20">
-        <ShoppingBag className="h-5 w-5 text-white" strokeWidth={2} />
-      </div>
-      <div className="flex flex-col leading-tight">
-        <span className="font-bold text-slate-900">NexSales</span>
-        <span className="text-[9px] uppercase tracking-widest text-slate-400">Smart Sales</span>
-      </div>
-    </div>
-  )
-
   /* ── Mode: profile selection ─────────────────────────────────────── */
   if (mode === 'profiles') {
     return (
@@ -370,6 +358,25 @@ function LoginPageContent() {
       <p className="mt-6 text-center text-xs text-slate-400">
         Protegido por autenticação Supabase
       </p>
+    </div>
+  )
+}
+
+/**
+ * Brand lockup shown above the form on narrow screens. Declared at module
+ * scope: defining it inside the page component would create a brand-new
+ * component type on every render, remounting it and dropping focus.
+ */
+function MobileBrand() {
+  return (
+    <div className="flex lg:hidden items-center gap-2.5 mb-10">
+      <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20">
+        <ShoppingBag className="h-5 w-5 text-white" strokeWidth={2} />
+      </div>
+      <div className="flex flex-col leading-tight">
+        <span className="font-bold text-slate-900">NexSales</span>
+        <span className="text-[9px] uppercase tracking-widest text-slate-400">Smart Sales</span>
+      </div>
     </div>
   )
 }

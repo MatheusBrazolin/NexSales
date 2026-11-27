@@ -279,9 +279,6 @@ test.describe('Cadastro de Produto (/produtos/novo)', () => {
     await page.waitForTimeout(100)
 
     // Green indicator (TrendingUp icon or green color)
-    const indicator = page.locator('[class*="green"], [class*="emerald"]').filter({ hasText: /Margem|Ganho/ })
-    // Or look for the TrendingUp svg
-    const trendingUp = page.locator('svg').filter({ has: page.locator('path') }).nth(0)
     const greenSection = page.locator('.text-green-600, .text-emerald-600, .bg-green-50, .bg-emerald-50').first()
     await expect(greenSection).toBeVisible({ timeout: 2_000 })
   })
@@ -533,11 +530,6 @@ test.describe('Responsividade — Desktop (1280px)', () => {
     const searchInput = page.getByLabel('Buscar produto por código ou nome')
     const searchBox = await searchInput.boundingBox()
     expect(searchBox).not.toBeNull()
-
-    // The cart should be to the right of the search area
-    // Look for shopping cart heading or icon
-    const cartSection = page.locator('[class*="cart"], [class*="Cart"]').first()
-      .or(page.getByRole('heading', { name: /carrinho/i }))
 
     // Both sections should be visible and not stacked (search x + width < cart x)
     // Just check that page renders without error in a two-column layout
