@@ -72,17 +72,28 @@ function CurrencyInput({ id, value, onChange, placeholder = '0,00', hasError, di
   }
 
   return (
-    <Input
-      id={id}
-      value={display}
-      onChange={handleChange}
-      placeholder={placeholder}
-      inputMode="numeric"
-      autoComplete="off"
-      disabled={disabled}
-      aria-invalid={hasError}
-      className="h-10 border-slate-200 dark:border-white/10"
-    />
+    // A unidade mora DENTRO do campo: o rótulo diz o que é, o campo diz
+    // como preencher. "Preço de Venda (R$)" fazia o rótulo carregar as
+    // duas coisas e ainda competia com o valor já formatado.
+    <div className="relative">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 dark:text-slate-500"
+      >
+        R$
+      </span>
+      <Input
+        id={id}
+        value={display}
+        onChange={handleChange}
+        placeholder={placeholder}
+        inputMode="numeric"
+        autoComplete="off"
+        disabled={disabled}
+        aria-invalid={hasError}
+        className="h-10 border-slate-200 pl-9 text-right tabular-nums dark:border-white/10"
+      />
+    </div>
   )
 }
 // ───────────────────────────────────────────────────────────────────────────
@@ -238,7 +249,7 @@ export function ProductForm({ product, categories, onSubmit }: ProductFormProps)
   }
 
   return (
-    <Card className="max-w-2xl border-slate-200/80 dark:border-white/8 shadow-sm">
+    <Card className="mx-auto w-full max-w-2xl border-slate-200/80 dark:border-white/8 shadow-sm">
       <CardHeader className="bg-slate-50/60 dark:bg-slate-800/60 border-b border-slate-100 dark:border-white/8 pb-3">
         <CardTitle className="text-sm font-semibold text-slate-900 dark:text-slate-100">
           {product ? 'Dados do produto' : 'Informações do produto'}
@@ -284,11 +295,6 @@ export function ProductForm({ product, categories, onSubmit }: ProductFormProps)
                   <ScanBarcode className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 dark:text-slate-600 pointer-events-none" />
                 )}
               </div>
-              {isNew && (
-                <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                  Ao escanear ou pressionar Enter, buscamos nome e descrição automaticamente.
-                </p>
-              )}
               {errors.code && (
                 <p className="text-red-500 text-xs">{errors.code.message}</p>
               )}
@@ -316,6 +322,18 @@ export function ProductForm({ product, categories, onSubmit }: ProductFormProps)
             </div>
           </div>
 
+          {/* Fora da grade, de propósito: dentro da célula do código este
+              texto esticava só a coluna da esquerda e entortava a linha
+              inteira. Aqui ele explica os dois campos, que é o que ele
+              realmente faz. */}
+          {isNew && (
+            <p className="-mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-slate-400 dark:text-slate-500">
+              <ScanBarcode className="mt-px h-3 w-3 shrink-0" aria-hidden />
+              Aponte o leitor ou pressione Enter no código — buscamos nome e
+              descrição automaticamente.
+            </p>
+          )}
+
           <div className="space-y-1.5">
             <Label htmlFor="description" className="text-xs font-medium text-slate-700 dark:text-slate-300">
               Descrição
@@ -335,7 +353,7 @@ export function ProductForm({ product, categories, onSubmit }: ProductFormProps)
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="sale_price" className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                Preço de Venda (R$) <span className="text-red-500">*</span>
+                Preço de venda <span className="text-red-500">*</span>
               </Label>
               <Controller
                 control={control}
@@ -356,7 +374,7 @@ export function ProductForm({ product, categories, onSubmit }: ProductFormProps)
 
             <div className="space-y-1.5">
               <Label htmlFor="cost_price" className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                Preço de Custo (R$) <span className="text-red-500">*</span>
+                Preço de custo <span className="text-red-500">*</span>
               </Label>
               <Controller
                 control={control}
