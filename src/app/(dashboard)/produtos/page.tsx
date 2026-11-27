@@ -108,7 +108,11 @@ export default async function ProdutosPage({
   }
 
   return (
-    <div className="space-y-6">
+    // A tela cabe na tela: cabeçalho, filtros e paginação ficam parados, e
+    // só a tabela rola dentro de si. Rolar a página inteira esconderia a
+    // busca e o botão de cadastrar, obrigando a voltar ao topo a cada
+    // consulta — imposto cobrado a cada uso numa tela de trabalho.
+    <div className="flex h-full min-h-0 flex-col gap-5">
       {offline && (
         <OfflineBanner message="Sem conexão — lista de produtos indisponível. Use o PDV para consultar produtos pelo catálogo offline." />
       )}
@@ -128,7 +132,7 @@ export default async function ProdutosPage({
         </Button>
       </div>
 
-      <Card className="border-slate-200/80 dark:border-white/8 dark:bg-slate-800/60 shadow-sm">
+      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-slate-200/80 dark:border-white/8 dark:bg-slate-800/60 shadow-sm">
         {/* Filters bar */}
         <form className="p-4 border-b border-slate-100 dark:border-white/5 grid grid-cols-1 sm:grid-cols-12 gap-3">
           <div className="sm:col-span-5 relative">
@@ -186,9 +190,12 @@ export default async function ProdutosPage({
           </div>
         </form>
 
-        <div className="overflow-x-auto">
+        <div className="min-h-0 flex-1 overflow-auto">
           <Table>
-            <TableHeader>
+            {/* Cabeçalho fixo: com a tabela rolando por dentro, perder o
+                nome das colunas na terceira tela de produtos tornaria os
+                números ilegíveis. */}
+            <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-800">
               <TableRow className="hover:bg-transparent border-slate-100 dark:border-white/5">
                 <TableHead className="hidden sm:table-cell text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 h-11">
                   Código
