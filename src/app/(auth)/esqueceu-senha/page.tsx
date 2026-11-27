@@ -78,7 +78,7 @@ export default function EsqueceuSenhaPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-slate-700 text-sm font-medium">
                 Email

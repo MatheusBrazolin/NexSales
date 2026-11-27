@@ -245,7 +245,12 @@ export function ProductForm({ product, categories, onSubmit }: ProductFormProps)
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-5">
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
+        {/* noValidate: os campos continuam marcados como `required` para
+            leitores de tela, mas o balão nativo do navegador ("Preencha este
+            campo.") não dispara. Ele aparecia antes do react-hook-form, com a
+            fonte do sistema e fora do design, escondendo as mensagens do Zod
+            que o formulário já sabe mostrar inline. */}
+        <form noValidate onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="code" className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">

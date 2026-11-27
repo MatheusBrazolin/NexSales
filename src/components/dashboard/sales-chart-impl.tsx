@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
+import { LineChart as LineChartIcon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { formatCurrency } from '@/lib/utils/format'
@@ -40,6 +41,9 @@ function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
 export function SalesChart({ data }: SalesChartProps) {
   const total = data.reduce((sum, point) => sum + point.total, 0)
   const prefersReduced = usePrefersReducedMotion()
+  // Every list in the app has an empty state; the chart had none, so a shop
+  // with no sales yet got a tall empty rectangle with no axes and no words.
+  const isEmpty = data.length === 0 || data.every((point) => point.total === 0)
 
   return (
     <Card className="border-slate-200/60 dark:border-white/8 bg-white/80 dark:bg-slate-800/70 backdrop-blur-sm shadow-sm">
@@ -60,6 +64,21 @@ export function SalesChart({ data }: SalesChartProps) {
         </div>
       </CardHeader>
       <CardContent className="pt-2">
+        {isEmpty ? (
+          <div className="h-[240px] flex flex-col items-center justify-center text-center">
+            <LineChartIcon
+              className="h-10 w-10 text-slate-300 dark:text-slate-600 mb-3"
+              aria-hidden
+            />
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+              Nenhuma venda nos últimos 30 dias
+            </p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-xs">
+              O gráfico começa a desenhar assim que a primeira venda for
+              registrada no PDV.
+            </p>
+          </div>
+        ) : (
         <ResponsiveContainer width="100%" height={240}>
           <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
             <defs>
@@ -106,6 +125,7 @@ export function SalesChart({ data }: SalesChartProps) {
             />
           </AreaChart>
         </ResponsiveContainer>
+        )}
       </CardContent>
     </Card>
   )

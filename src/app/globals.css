@@ -220,6 +220,23 @@
   }
 }
 
+@layer base {
+  /* Diz ao navegador em que tema ele deve pintar o que ele mesmo desenha:
+     o popup do <select>, o calendário do <input type="date">, o spinner do
+     number e a barra de rolagem.
+     Sem isto, o app ficava escuro mas o seletor de data aparecia como um
+     retângulo branco no meio da página, e o ícone de calendário sumia por
+     ser cinza-escuro sobre fundo escuro. Vale para todo controle nativo de
+     uma vez — mais confiável que lembrar de [color-scheme:dark] em cada um. */
+  :root {
+    color-scheme: light;
+  }
+
+  :root.dark {
+    color-scheme: dark;
+  }
+}
+
 /* Custom thin scrollbar */
 @layer base {
   * {

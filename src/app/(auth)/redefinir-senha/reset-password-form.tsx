@@ -129,7 +129,7 @@ export function ResetPasswordForm({ code }: ResetPasswordFormProps) {
             <p className="mt-2 text-slate-500">Escolha uma nova senha para sua conta.</p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="password" className="text-slate-700 text-sm font-medium">
                 Nova senha

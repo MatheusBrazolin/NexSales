@@ -193,7 +193,7 @@ function LoginPageContent() {
               type={showPassword ? 'text' : 'password'}
               value={profilePwd}
               onChange={(e) => setProfilePwd(e.target.value)}
-              placeholder="••••••••"
+              placeholder="Sua senha"
               autoComplete="current-password"
               className="h-11 border-slate-200 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:border-primary pr-10"
             />
@@ -270,7 +270,7 @@ function LoginPageContent() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div className="space-y-2">
           <Label htmlFor="username" className="text-slate-700 text-sm font-medium">
             Usuário
@@ -306,7 +306,7 @@ function LoginPageContent() {
             <Input
               id="password"
               type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
+              placeholder="Sua senha"
               autoComplete="current-password"
               className="h-11 border-slate-200 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:border-primary pr-10"
               {...register('password')}
@@ -356,7 +356,7 @@ function LoginPageContent() {
       </form>
 
       <p className="mt-6 text-center text-xs text-slate-400">
-        Protegido por autenticação Supabase
+        Conexão segura e criptografada
       </p>
     </div>
   )
