@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils/cn'
 import { tryQuery } from '@/lib/supabase/try-query'
 import { OfflineBanner } from '@/components/offline/offline-banner'
 import { ExportButtons } from '@/components/reports/export-buttons'
+import { buildCsvReport } from '@/lib/utils/csv'
 
 export const metadata = { title: 'Relatório de lucro' }
 
@@ -99,25 +100,28 @@ export default async function RelatoriosPage({
 
         <ExportButtons
           filePrefix="relatorio-lucro"
-          preamble={[
-            'NexSales - Relatorio de lucro',
-            `Periodo;${PERIOD_LABELS[period]}`,
-            `Vendas;${dre.salesCount}`,
-            `Receita;${dre.revenue.toFixed(2).replace('.', ',')}`,
-            `Descontos;${dre.discounts.toFixed(2).replace('.', ',')}`,
-            `Custo;${dre.cost.toFixed(2).replace('.', ',')}`,
-            `Lucro bruto;${dre.grossProfit.toFixed(2).replace('.', ',')}`,
-            `Margem bruta;${dre.grossMargin.toFixed(1).replace('.', ',')}%`,
-          ]}
-          columns={[
-            { header: 'Produto', value: (p) => p.name },
-            { header: 'Qtd vendida', value: (p) => p.quantity },
-            { header: 'Receita', value: (p) => p.revenue },
-            { header: 'Custo', value: (p) => p.cost },
-            { header: 'Lucro', value: (p) => p.profit },
-            { header: 'Margem %', value: (p) => p.margin },
-          ]}
-          rows={dre.topProducts}
+          rowCount={dre.topProducts.length}
+          csv={buildCsvReport(
+            [
+              'NexSales - Relatorio de lucro',
+              `Periodo;${PERIOD_LABELS[period]}`,
+              `Vendas;${dre.salesCount}`,
+              `Receita;${dre.revenue.toFixed(2).replace('.', ',')}`,
+              `Descontos;${dre.discounts.toFixed(2).replace('.', ',')}`,
+              `Custo;${dre.cost.toFixed(2).replace('.', ',')}`,
+              `Lucro bruto;${dre.grossProfit.toFixed(2).replace('.', ',')}`,
+              `Margem bruta;${dre.grossMargin.toFixed(1).replace('.', ',')}%`,
+            ],
+            [
+              { header: 'Produto', value: (p) => p.name },
+              { header: 'Qtd vendida', value: (p) => p.quantity },
+              { header: 'Receita', value: (p) => p.revenue },
+              { header: 'Custo', value: (p) => p.cost },
+              { header: 'Lucro', value: (p) => p.profit },
+              { header: 'Margem %', value: (p) => p.margin },
+            ],
+            dre.topProducts,
+          )}
         />
       </div>
 

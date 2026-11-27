@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ExportButtons } from '@/components/reports/export-buttons'
+import { buildCsvReport } from '@/lib/utils/csv'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -179,22 +180,25 @@ export function CashCloseView({ summary }: CashCloseViewProps) {
             <ExportButtons
               filePrefix={`fechamento-${summary.date}`}
               showPrint={false}
-              preamble={[
-                'NexSales - Fechamento de caixa',
-                `Data;${summary.date}`,
-                `Vendas;${summary.count}`,
-                `Total;${summary.total.toFixed(2).replace('.', ',')}`,
-                `Ticket medio;${summary.averageTicket.toFixed(2).replace('.', ',')}`,
-              ]}
-              columns={[
-                { header: 'Hora', value: (sale) => format(new Date(sale.created_at), 'HH:mm') },
-                { header: 'Venda', value: (sale) => sale.id.slice(0, 8) },
-                { header: 'Pagamento', value: (sale) => PAYMENT_LABELS[sale.payment_method] ?? sale.payment_method },
-                { header: 'Itens', value: (sale) => sale.items.reduce((n, item) => n + item.quantity, 0) },
-                { header: 'Total', value: (sale) => sale.total_amount },
-                { header: 'Observacoes', value: (sale) => sale.notes ?? '' },
-              ]}
-              rows={summary.sales}
+              rowCount={summary.sales.length}
+              csv={buildCsvReport(
+                [
+                  'NexSales - Fechamento de caixa',
+                  `Data;${summary.date}`,
+                  `Vendas;${summary.count}`,
+                  `Total;${summary.total.toFixed(2).replace('.', ',')}`,
+                  `Ticket medio;${summary.averageTicket.toFixed(2).replace('.', ',')}`,
+                ],
+                [
+                  { header: 'Hora', value: (sale) => format(new Date(sale.created_at), 'HH:mm') },
+                  { header: 'Venda', value: (sale) => sale.id.slice(0, 8) },
+                  { header: 'Pagamento', value: (sale) => PAYMENT_LABELS[sale.payment_method] ?? sale.payment_method },
+                  { header: 'Itens', value: (sale) => sale.items.reduce((n, item) => n + item.quantity, 0) },
+                  { header: 'Total', value: (sale) => sale.total_amount },
+                  { header: 'Observacoes', value: (sale) => sale.notes ?? '' },
+                ],
+                summary.sales,
+              )}
             />
             <Button
               onClick={handleSavePdf}

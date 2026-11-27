@@ -76,6 +76,25 @@ export function downloadCsv(filename: string, content: string): boolean {
   return true
 }
 
+/**
+ * A report file: a few summary lines, a blank line, then the table.
+ *
+ * Excel treats the blank line as a section break, so the table below it still
+ * parses into columns while the header above stays readable.
+ */
+export function buildCsvReport<T>(
+  preamble: string[],
+  columns: CsvColumn<T>[],
+  rows: T[],
+): string {
+  const table = buildCsv(columns, rows)
+  if (preamble.length === 0) return table
+
+  // buildCsv already prefixed the BOM; drop it from the table and keep the
+  // one at the very start of the file, where Excel actually looks for it.
+  return BOM + preamble.join('\r\n') + '\r\n\r\n' + table.slice(BOM.length)
+}
+
 /** "relatorio-lucro-2026-11-27.csv" — sortable, no spaces, no accents. */
 export function csvFilename(prefix: string, date = new Date()): string {
   const iso = new Intl.DateTimeFormat('en-CA', {

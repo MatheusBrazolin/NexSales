@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { buildCsv, csvCell, csvNumber, csvFilename, downloadCsv } from './csv'
+import {
+  buildCsv,
+  buildCsvReport,
+  csvCell,
+  csvNumber,
+  csvFilename,
+  downloadCsv,
+} from './csv'
 
 describe('csvNumber', () => {
   it('uses a comma for decimals, as Excel pt-BR expects', () => {
@@ -122,5 +129,27 @@ describe('downloadCsv', () => {
     expect(click).toHaveBeenCalledTimes(1)
 
     vi.restoreAllMocks()
+  })
+})
+
+describe('buildCsvReport', () => {
+  interface Row {
+    name: string
+  }
+  const columns = [{ header: 'Produto', value: (r: Row) => r.name }]
+
+  it('falls back to a plain table when there is no preamble', () => {
+    expect(buildCsvReport([], columns, [])).toBe(buildCsv(columns, []))
+  })
+
+  it('puts the summary above the table, separated by a blank line', () => {
+    const csv = buildCsvReport(['Periodo;Este mes'], columns, [{ name: 'Pão' }])
+    expect(csv).toBe('﻿Periodo;Este mes\r\n\r\nProduto\r\nPão')
+  })
+
+  it('keeps exactly one BOM, at the very start where Excel looks for it', () => {
+    const csv = buildCsvReport(['Resumo'], columns, [{ name: 'X' }])
+    expect(csv.indexOf('﻿')).toBe(0)
+    expect(csv.lastIndexOf('﻿')).toBe(0)
   })
 })

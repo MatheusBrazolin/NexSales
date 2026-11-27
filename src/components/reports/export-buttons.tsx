@@ -4,15 +4,24 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Download, Printer, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { buildCsv, downloadCsv, csvFilename, type CsvColumn } from '@/lib/utils/csv'
+import { downloadCsv, csvFilename } from '@/lib/utils/csv'
 
-interface ExportButtonsProps<T> {
+interface ExportButtonsProps {
   /** Used for the file name: "<prefix>-2026-11-27.csv". */
   filePrefix: string
-  columns: CsvColumn<T>[]
-  rows: T[]
-  /** Lines written above the table — period, totals, whatever frames it. */
-  preamble?: string[]
+  /**
+   * The finished CSV text, built by the caller with `buildCsv`.
+   *
+   * It arrives already built, rather than as columns + rows, because this is
+   * a Client Component and a page that renders it on the server cannot send
+   * functions across that boundary — a `value: (row) => row.name` accessor
+   * throws "Functions cannot be passed directly to Client Components" at
+   * render time and takes the whole page down with it. A string always
+   * serialises.
+   */
+  csv: string
+  /** Rows represented, only to decide whether there is anything to export. */
+  rowCount: number
   /** Hides the PDF button where printing makes no sense. */
   showPrint?: boolean
 }
@@ -26,29 +35,23 @@ interface ExportButtonsProps<T> {
  * to a page used a few times a month, and it would have to re-implement the
  * Brazilian number and date formatting that the browser already does right.
  */
-export function ExportButtons<T>({
+export function ExportButtons({
   filePrefix,
-  columns,
-  rows,
-  preamble = [],
+  csv,
+  rowCount,
   showPrint = true,
-}: ExportButtonsProps<T>) {
+}: ExportButtonsProps) {
   const [exporting, setExporting] = useState(false)
 
   function handleCsv() {
-    if (rows.length === 0) {
+    if (rowCount === 0) {
       toast.info('Nada para exportar neste período.')
       return
     }
 
     setExporting(true)
     try {
-      const table = buildCsv(columns, rows)
-      const content = preamble.length > 0
-        ? `﻿${preamble.join('\r\n')}\r\n\r\n${table.slice(1)}`
-        : table
-
-      const ok = downloadCsv(csvFilename(filePrefix), content)
+      const ok = downloadCsv(csvFilename(filePrefix), csv)
       if (ok) {
         toast.success('Arquivo CSV gerado.')
       } else {
