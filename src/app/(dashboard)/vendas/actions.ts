@@ -6,6 +6,7 @@ import { isAdmin } from '@/lib/auth/roles'
 import { isElectron } from '@/lib/db/client'
 import { pullSingleSale, deleteLocalSale } from '@/lib/db/sync'
 import type { Json, PaymentMethod } from '@/types/database'
+import type { PaymentLine } from '@/lib/utils/sale-payments'
 
 interface SaleItem {
   product_id: string
@@ -24,6 +25,14 @@ interface CreateSaleInput {
   customer_id?: string | null
   /** Desconto no total, em reais. O servidor limita ao valor da venda. */
   discount?: number
+  /**
+   * Pagamento dividido. Quando ausente, a venda tem uma forma só e usa
+   * `payment_method` — é esse caminho que mantém funcionando a fila de
+   * vendas offline gravada antes desta mudança.
+   *
+   * A soma TEM de bater com o total; o servidor recusa o contrário.
+   */
+  payments?: PaymentLine[]
 }
 
 /**
@@ -38,6 +47,8 @@ export type CreateSaleErrorCode =
   | 'empty_cart'
   | 'unauthenticated'
   | 'customer_required'
+  | 'payment_mismatch'
+  | 'invalid_payment_amount'
   | 'unknown'
 
 export interface CreateSaleResult {
@@ -56,6 +67,9 @@ export async function createSale(input: CreateSaleInput): Promise<CreateSaleResu
     p_client_uuid: input.client_uuid ?? null,
     p_customer_id: input.customer_id ?? null,
     p_discount: input.discount ?? 0,
+    // null (e não lista vazia) é o que faz o servidor usar o caminho de
+    // forma única — a lista vazia seria uma divisão que não soma nada.
+    p_payments: input.payments?.length ? (input.payments as unknown as Json) : null,
   })
 
   if (error) {
@@ -75,6 +89,17 @@ export async function createSale(input: CreateSaleInput): Promise<CreateSaleResu
     }
     if (msg.includes('customer_required')) {
       return { error: 'Selecione um cliente para venda fiada.', code: 'customer_required' }
+    }
+    if (msg.includes('payment_mismatch')) {
+      // Formato: payment_mismatch:<total>:<somado>
+      const [, total, paid] = msg.split(':')
+      return {
+        error: `A soma dos pagamentos (R$ ${paid?.trim() ?? '?'}) não bate com o total da venda (R$ ${total?.trim() ?? '?'}).`,
+        code: 'payment_mismatch',
+      }
+    }
+    if (msg.includes('invalid_payment_amount')) {
+      return { error: 'Há uma forma de pagamento sem valor.', code: 'invalid_payment_amount' }
     }
     return { error: error.message, code: 'unknown' }
   }

@@ -42,6 +42,12 @@ import { queueSale } from '@/lib/offline/sales-repo'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { formatCurrency } from '@/lib/utils/format'
 import { cartSubtotal, parseDiscountInput, saleTotals } from '@/lib/utils/sale-totals'
+import { PaymentSplit } from '@/components/sales/payment-split'
+import {
+  cleanPaymentLines,
+  summarizeSplit,
+  type PaymentLine,
+} from '@/lib/utils/sale-payments'
 import { printReceipt } from '@/lib/utils/print-receipt'
 import { fadeUp, spring, useMotionVariants, usePrefersReducedMotion } from '@/lib/motion'
 import { usePdvShortcuts, FOCUS_SEARCH_EVENT } from '@/hooks/use-pdv-shortcuts'
@@ -111,6 +117,12 @@ export function PDV({ avulsoProduct }: PDVProps) {
   const [confirmedTotal, setConfirmedTotal] = useState<number | null>(null)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [cashReceivedRaw, setCashReceivedRaw] = useState('')
+  // Divisão do pagamento. Fora do caminho comum de propósito: a imensa
+  // maioria das vendas tem uma forma só, e quem abre o caixa de manhã não
+  // deve ter que fechar um formulário a mais por isso.
+  const [splitMode, setSplitMode] = useState(false)
+  const [splitLines, setSplitLines] = useState<PaymentLine[]>([])
+  const [splitRaw, setSplitRaw] = useState<string[]>([])
   const [discountRaw, setDiscountRaw] = useState('')
 
   // --- Fiado: seleção de cliente ---
@@ -123,9 +135,6 @@ export function PDV({ avulsoProduct }: PDVProps) {
   const [newCustomerPhone, setNewCustomerPhone] = useState('')
   const [isCreatingCustomer, setIsCreatingCustomer] = useState(false)
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const paymentMissing = !paymentMethod
-  const customerMissing = paymentMethod === 'fiado' && !selectedCustomer
 
   // Clamped exactly the way create_sale_with_items clamps it, so the screen
   // can never promise a total the RPC will not honour.
@@ -142,12 +151,26 @@ export function PDV({ avulsoProduct }: PDVProps) {
 
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
+  const split = summarizeSplit(splitLines, total)
+  const needsCustomer = splitMode ? split.requiresCustomer : paymentMethod === 'fiado'
+  const paymentMissing = splitMode ? !split.balanced : !paymentMethod
+  const customerMissing = needsCustomer && !selectedCustomer
+
+  const splitCashDue = splitLines
+    .filter((line) => line.method === 'cash')
+    .reduce((sum, line) => sum + line.amount, 0)
+
+  // Sem divisão, a parte em dinheiro é a venda inteira — então o troco
+  // continua sendo calculado exatamente como antes.
+  const cashDue = splitMode ? splitCashDue : total
+  const showCashBox = splitMode ? splitCashDue > 0 : paymentMethod === 'cash'
+
   const cashReceived = cashReceivedRaw.trim()
     ? parseFloat(cashReceivedRaw.replace(',', '.'))
     : NaN
   const hasCashEntered = !Number.isNaN(cashReceived)
-  const change = hasCashEntered ? cashReceived - total : 0
-  const cashShort = hasCashEntered && cashReceived < total
+  const change = hasCashEntered ? cashReceived - cashDue : 0
+  const cashShort = hasCashEntered && cashReceived < cashDue
 
   function handleAddItem(item: CartItem) {
     setCartItems((prev) => {
@@ -261,15 +284,26 @@ export function PDV({ avulsoProduct }: PDVProps) {
       toast.error('Adicione pelo menos um produto')
       return
     }
-    if (!paymentMethod) {
+    if (splitMode) {
+      // O servidor recusa a venda cuja soma não bate. Avisar aqui evita o
+      // erro cru do banco no meio do atendimento.
+      if (!split.balanced) {
+        toast.error(
+          split.overpaid
+            ? 'A soma dos pagamentos passou do total da venda'
+            : 'A soma dos pagamentos não cobre o total da venda',
+        )
+        return
+      }
+    } else if (!paymentMethod) {
       toast.error('Selecione o método de pagamento')
       return
     }
-    if (paymentMethod === 'cash' && hasCashEntered && cashShort) {
-      toast.error('Valor recebido é menor que o total da venda')
+    if (showCashBox && hasCashEntered && cashShort) {
+      toast.error('Valor recebido é menor que a parte em dinheiro')
       return
     }
-    if (paymentMethod === 'fiado' && !selectedCustomer) {
+    if (needsCustomer && !selectedCustomer) {
       toast.error('Selecione um cliente para a venda fiada')
       return
     }
@@ -300,12 +334,15 @@ export function PDV({ avulsoProduct }: PDVProps) {
 
       try {
         const result = await createSale({
-          payment_method: paymentMethod,
+          // Na divisão, a etiqueta é a forma predominante — a mesma regra
+          // que o servidor aplica, para a tela não prometer outra coisa.
+          payment_method: (splitMode ? split.predominant : paymentMethod) as PaymentMethod,
           notes,
           items: rpcItems,
           client_uuid: clientUuid,
           customer_id: selectedCustomer?.id ?? null,
           discount,
+          ...(splitMode ? { payments: cleanPaymentLines(splitLines) } : {}),
         })
 
         if (result.error) {
@@ -329,15 +366,17 @@ export function PDV({ avulsoProduct }: PDVProps) {
   }
 
   async function saveOffline(clientUuid: string) {
-    if (!paymentMethod) return
+    const method = splitMode ? split.predominant : paymentMethod
+    if (!method) return
     try {
       await queueSale({
         client_uuid: clientUuid,
-        payment_method: paymentMethod,
+        payment_method: method,
         notes,
         total,
         discount,
         customer_id: selectedCustomer?.id ?? null,
+        ...(splitMode ? { payments: cleanPaymentLines(splitLines) } : {}),
         items: cartItems.map((item) => ({
           product_id: item.product.id,
           quantity: item.quantity,
@@ -385,6 +424,9 @@ export function PDV({ avulsoProduct }: PDVProps) {
   function resetForm() {
     setCartItems([])
     setPaymentMethod('')
+    setSplitMode(false)
+    setSplitLines([])
+    setSplitRaw([])
     setNotes('')
     setCashReceivedRaw('')
     setDiscountRaw('')
@@ -590,10 +632,43 @@ export function PDV({ avulsoProduct }: PDVProps) {
             </CardHeader>
             <CardContent className="space-y-5 pt-5">
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <CreditCard className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
-                  Método de pagamento <span className="text-red-500">*</span>
-                </Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <CreditCard className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
+                    Método de pagamento <span className="text-red-500">*</span>
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (splitMode) {
+                        setSplitMode(false)
+                        setSplitLines([])
+                        setSplitRaw([])
+                        setCashReceivedRaw('')
+                        return
+                      }
+                      // Entra na divisão já com uma linha valendo a venda
+                      // inteira, na forma que o operador tinha escolhido.
+                      // Daí ele só ajusta o valor e adiciona a segunda.
+                      setSplitMode(true)
+                      setSplitLines([{ method: paymentMethod || 'cash', amount: total }])
+                      setSplitRaw([total > 0 ? total.toFixed(2).replace('.', ',') : ''])
+                      setCashReceivedRaw('')
+                    }}
+                    className="text-[11px] font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 underline underline-offset-2"
+                  >
+                    {splitMode ? 'Pagamento único' : 'Dividir pagamento'}
+                  </button>
+                </div>
+                {splitMode ? (
+                  <PaymentSplit
+                    total={total}
+                    lines={splitLines}
+                    onChange={setSplitLines}
+                    rawAmounts={splitRaw}
+                    onRawAmountsChange={setSplitRaw}
+                  />
+                ) : (
                 <Select
                   value={paymentMethod}
                   items={PAYMENT_OPTIONS}
@@ -627,14 +702,15 @@ export function PDV({ avulsoProduct }: PDVProps) {
                     ))}
                   </SelectContent>
                 </Select>
-                {triedSubmit && paymentMissing && (
+                )}
+                {triedSubmit && paymentMissing && !splitMode && (
                   <p className="text-red-500 text-xs">
                     Selecione o método de pagamento para finalizar.
                   </p>
                 )}
               </div>
 
-              {paymentMethod === 'cash' && (
+              {showCashBox && (
                 <div className="rounded-lg border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-500/8 p-3 space-y-3">
                   <div className="space-y-1.5">
                     <Label

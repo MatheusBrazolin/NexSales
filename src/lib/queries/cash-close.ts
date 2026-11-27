@@ -22,7 +22,10 @@ export interface SaleRow {
   id: string
   created_at: string
   total_amount: number
+  /** Forma predominante — a etiqueta da venda. */
   payment_method: PaymentMethod
+  /** Como a venda foi efetivamente paga. Uma linha quando a forma é única. */
+  payments: { method: PaymentMethod; amount: number }[]
   notes: string | null
   items: SaleItemSummary[]
 }
@@ -61,6 +64,7 @@ interface RawSale {
   payment_method: string
   notes: string | null
   sale_items: RawSaleItem[] | null
+  sale_payments: { method: string; amount: number }[] | null
 }
 
 /**
@@ -85,7 +89,10 @@ export async function getCashClose(
   const { data, error } = await supabase
     .from('sales')
     .select(
-      'id, created_at, total_amount, payment_method, notes, sale_items(quantity, unit_price, subtotal, products(code, name))',
+      // sale_payments entra aqui porque o fechamento confere DINHEIRO. Agrupar
+      // pela etiqueta da venda jogaria uma venda mista inteira numa forma só, e
+      // o caixa procuraria no dinheiro um valor que entrou no cartão.
+      'id, created_at, total_amount, payment_method, notes, sale_items(quantity, unit_price, subtotal, products(code, name)), sale_payments(method, amount)',
     )
     .gte('created_at', start)
     .lte('created_at', end)
@@ -100,6 +107,10 @@ export async function getCashClose(
     created_at: row.created_at,
     total_amount: Number(row.total_amount),
     payment_method: row.payment_method as PaymentMethod,
+    payments: (row.sale_payments ?? []).map((p) => ({
+      method: p.method as PaymentMethod,
+      amount: Number(p.amount),
+    })),
     notes: row.notes,
     items: (row.sale_items ?? []).map((item) => ({
       productCode: item.products?.code ?? '—',
@@ -114,16 +125,25 @@ export async function getCashClose(
   let total = 0
   for (const sale of sales) {
     total += sale.total_amount
-    const current = byPaymentMap.get(sale.payment_method) ?? {
-      method: sale.payment_method,
-      count: 0,
-      total: 0,
+
+    // Uma linha por forma de pagamento. Venda de forma única tem uma linha
+    // só, e o resultado é idêntico ao de antes; venda mista distribui cada
+    // parcela na sua forma, que é o que o operador tem na gaveta.
+    //
+    // A venda sem linha de pagamento (total zero) não entra em forma
+    // nenhuma — nada foi pago nela.
+    for (const payment of sale.payments) {
+      const current = byPaymentMap.get(payment.method) ?? {
+        method: payment.method,
+        count: 0,
+        total: 0,
+      }
+      byPaymentMap.set(payment.method, {
+        method: payment.method,
+        count: current.count + 1,
+        total: current.total + payment.amount,
+      })
     }
-    byPaymentMap.set(sale.payment_method, {
-      method: sale.payment_method,
-      count: current.count + 1,
-      total: current.total + sale.total_amount,
-    })
   }
 
   const byPayment = Array.from(byPaymentMap.values()).sort((a, b) => b.total - a.total)

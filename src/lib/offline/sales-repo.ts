@@ -25,6 +25,8 @@ export interface QueueSaleInput {
   total: number
   discount?: number
   customer_id?: string | null
+  /** Pagamento dividido. Ausente quando a venda tem uma forma só. */
+  payments?: { method: PaymentMethod; amount: number }[]
 }
 
 /**
@@ -42,6 +44,7 @@ export async function queueSale(input: QueueSaleInput): Promise<void> {
     total: input.total,
     discount: input.discount ?? 0,
     customer_id: input.customer_id ?? null,
+    ...(input.payments?.length ? { payments: input.payments } : {}),
     createdAt: new Date().toISOString(),
     status: 'pending',
     attempts: 0,
@@ -83,6 +86,10 @@ const TERMINAL_CODES: ReadonlySet<string> = new Set([
   'product_not_found',
   'empty_cart',
   'customer_required',
+  // Divisao que nao soma o total nunca vai passar numa nova tentativa: o
+  // servidor recusa sempre. Repetir so manteria a venda presa na fila.
+  'payment_mismatch',
+  'invalid_payment_amount',
 ])
 
 // Guards against overlapping flushes — SyncProvider can trigger on mount,
@@ -129,6 +136,7 @@ export async function flushPendingSales(): Promise<{ synced: number; failed: num
         client_uuid: sale.id,
         customer_id: sale.customer_id ?? null,
         discount: sale.discount ?? 0,
+        ...(sale.payments?.length ? { payments: sale.payments } : {}),
       }).catch((err: unknown) => ({
         // A thrown call means the request never reached the server (network).
         error: err instanceof Error ? err.message : 'network',

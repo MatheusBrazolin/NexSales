@@ -390,6 +390,7 @@ export interface Database {
           p_client_uuid?: string | null
           p_customer_id?: string | null
           p_discount?: number
+          p_payments?: Json
         }
         Returns: string
       }

@@ -57,6 +57,12 @@ export interface PendingSale {
   total: number
   /** Desconto aplicado no total. Replayed to the server on flush. */
   discount?: number
+  /**
+   * Pagamento dividido, quando houver. Ausente numa venda de forma única —
+   * e ausente também nas vendas que já estavam na fila antes desta versão,
+   * que continuam subindo pelo caminho de sempre.
+   */
+  payments?: { method: PaymentMethod; amount: number }[]
   /** UUID of the customer for fiado sales; null/undefined for regular sales. */
   customer_id?: string | null
   createdAt: string // ISO timestamp
