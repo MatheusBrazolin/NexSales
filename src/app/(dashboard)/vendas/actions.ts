@@ -168,6 +168,9 @@ export async function cancelSale(
   })
 
   if (error) {
+    if (error.message.includes('reason_required')) {
+      return { success: false, error: 'Informe o motivo da exclusão.' }
+    }
     if (error.message.includes('sale_not_found')) {
       return { success: false, error: 'Venda não encontrada.' }
     }

@@ -36,6 +36,10 @@ export function CancelSaleButton({ saleId, shortId }: CancelSaleButtonProps) {
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [isOpen, isPending])
 
+  // Três caracteres, e não apenas "não vazio": um campo obrigatório que
+  // aceita "x" não documenta nada, só treina o operador a digitar "x".
+  const reasonFilled = reason.trim().length >= 3
+
   function handleConfirm() {
     startTransition(async () => {
       const result = await cancelSale(saleId, reason)
@@ -126,7 +130,7 @@ export function CancelSaleButton({ saleId, shortId }: CancelSaleButtonProps) {
                 htmlFor="cancel-reason"
                 className="block text-xs font-medium text-slate-700"
               >
-                Motivo <span className="font-normal text-slate-400">(opcional)</span>
+                Motivo <span className="text-red-500">*</span>
               </label>
               <input
                 id="cancel-reason"
@@ -138,7 +142,8 @@ export function CancelSaleButton({ saleId, shortId }: CancelSaleButtonProps) {
                 className="mt-1.5 w-full h-9 rounded-md border border-slate-200 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
               />
               <p className="mt-1.5 text-[11px] text-slate-400">
-                Fica guardado junto com o registro da exclusão.
+                Fica guardado junto com o registro da exclusão. Daqui a seis meses,
+                é a única coisa que explica por que esta venda sumiu.
               </p>
             </div>
 
@@ -155,8 +160,9 @@ export function CancelSaleButton({ saleId, shortId }: CancelSaleButtonProps) {
               <Button
                 type="button"
                 onClick={handleConfirm}
-                disabled={isPending}
-                className="bg-red-600 hover:bg-red-700 text-white shadow-sm"
+                disabled={isPending || !reasonFilled}
+                title={reasonFilled ? undefined : 'Informe o motivo para poder excluir'}
+                className="bg-red-600 hover:bg-red-700 text-white shadow-sm disabled:opacity-50"
               >
                 {isPending ? (
                   <>

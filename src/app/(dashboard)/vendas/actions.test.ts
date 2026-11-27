@@ -189,3 +189,15 @@ describe('createSale — preço zerado', () => {
     expect(result.error).toContain('Caneta UNI-BALL')
   })
 })
+
+describe('cancelSale — motivo obrigatório', () => {
+  it('traduz reason_required do banco para uma frase direta', async () => {
+    vi.mocked(isAdmin).mockResolvedValue(true)
+    rpcMock.mockResolvedValue({ error: { message: 'reason_required' } })
+
+    const result = await cancelSale('sale-1', '')
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('Informe o motivo da exclusão.')
+  })
+})
