@@ -68,6 +68,10 @@ export default async function VendaDetalhePage({
 
   if (!sale) notFound()
 
+  // Ordenado do maior para o menor: a parcela que mais pesa primeiro, que é
+  // como o operador lê a venda.
+  const payments = [...(sale.sale_payments ?? [])].sort((a, b) => b.amount - a.amount)
+
   const isAdminUser = currentUser?.role === 'admin'
 
   return (
@@ -135,9 +139,27 @@ export default async function VendaDetalhePage({
                 <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   Pagamento
                 </p>
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-0.5">
-                  {PAYMENT_LABELS[sale.payment_method]}
-                </p>
+                {/* Venda dividida mostra cada parcela. Só a etiqueta
+                    predominante esconderia que parte entrou em outra forma —
+                    e é justamente isso que o dono precisa conferir. */}
+                {payments.length > 1 ? (
+                  <ul className="mt-0.5 space-y-0.5">
+                    {payments.map((payment, index) => (
+                      <li
+                        key={index}
+                        className="text-sm font-medium text-slate-900 dark:text-slate-100 flex items-center gap-1.5"
+                      >
+                        <span>{PAYMENT_LABELS[payment.method]}</span>
+                        <span className="text-slate-400 dark:text-slate-500">·</span>
+                        <span className="tabular-nums">{formatCurrency(payment.amount)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-0.5">
+                    {PAYMENT_LABELS[sale.payment_method]}
+                  </p>
+                )}
               </div>
             </div>
             {sale.notes && (

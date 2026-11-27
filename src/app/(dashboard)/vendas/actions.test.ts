@@ -77,3 +77,62 @@ describe('createSale', () => {
     expect(result.error).toBe('some db explosion')
   })
 })
+
+describe('createSale — pagamento dividido', () => {
+  it('encaminha as parcelas como p_payments', async () => {
+    rpcMock.mockResolvedValue({ data: 'sale-123', error: null })
+
+    await createSale({
+      ...validInput,
+      payment_method: 'pix',
+      payments: [
+        { method: 'cash', amount: 5 },
+        { method: 'pix', amount: 6.99 },
+      ],
+    })
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'create_sale_with_items',
+      expect.objectContaining({
+        p_payment_method: 'pix',
+        p_payments: [
+          { method: 'cash', amount: 5 },
+          { method: 'pix', amount: 6.99 },
+        ],
+      }),
+    )
+  })
+
+  it('manda null quando não há divisão — é o caminho de forma única', async () => {
+    rpcMock.mockResolvedValue({ data: 'sale-123', error: null })
+    await createSale(validInput)
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'create_sale_with_items',
+      expect.objectContaining({ p_payments: null }),
+    )
+  })
+
+  it('lista vazia também vira null, e não uma divisão que não soma nada', async () => {
+    rpcMock.mockResolvedValue({ data: 'sale-123', error: null })
+    await createSale({ ...validInput, payments: [] })
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'create_sale_with_items',
+      expect.objectContaining({ p_payments: null }),
+    )
+  })
+
+  it('traduz payment_mismatch do servidor para uma frase que o caixa entende', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: 'payment_mismatch:70.00:60.00' },
+    })
+
+    const result = await createSale(validInput)
+
+    expect(result.code).toBe('payment_mismatch')
+    expect(result.error).toContain('60.00')
+    expect(result.error).toContain('70.00')
+  })
+})

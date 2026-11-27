@@ -76,7 +76,7 @@ export async function getSaleById(id: string): Promise<SaleWithItems | null> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('sales')
-    .select('*, sale_items(*, products(*)), customers(full_name)')
+    .select('*, sale_items(*, products(*)), customers(full_name), sale_payments(method, amount)')
     .eq('id', id)
     .single()
 

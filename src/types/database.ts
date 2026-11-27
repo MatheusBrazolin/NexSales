@@ -242,6 +242,38 @@ export interface Database {
           }
         ]
       }
+      sale_payments: {
+        Row: {
+          id: string
+          sale_id: string
+          method: PaymentMethod
+          amount: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          sale_id: string
+          method: PaymentMethod
+          amount: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          sale_id?: string
+          method?: PaymentMethod
+          amount?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'sale_payments_sale_id_fkey'
+            columns: ['sale_id']
+            isOneToOne: false
+            referencedRelation: 'sales'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       profiles: {
         Row: {
           user_id: string
@@ -467,6 +499,11 @@ export type ProductWithCategory = Product & {
 export type SaleWithItems = Sale & {
   sale_items: (SaleItem & { products: Product })[]
   customers: { full_name: string } | null
+  /**
+   * Como a venda foi efetivamente paga. Uma linha quando a forma é única.
+   * Vazio nas vendas de total zero, que não foram pagas em forma nenhuma.
+   */
+  sale_payments?: { method: PaymentMethod; amount: number }[]
 }
 
 export type CartItem = {
